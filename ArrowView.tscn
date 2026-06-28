@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://decli3x5cit4b"]
+
+[ext_resource type="Script" uid="uid://2ec1a5vkqbba" path="res://ArrowView.gd" id="1_shend"]
+[ext_resource type="TileSet" uid="uid://bnjcv3bjyj5nq" path="res://arrow_tiles.tres" id="2_shend"]
+
+[node name="ArrowView" type="Node2D" unique_id=396112226]
+position = Vector2(258, 229)
+script = ExtResource("1_shend")
+
+[node name="ArrowTileMap" type="TileMapLayer" parent="." unique_id=558277805]
+tile_set = ExtResource("2_shend")
