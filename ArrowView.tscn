@@ -4,7 +4,6 @@
 [ext_resource type="TileSet" uid="uid://bnjcv3bjyj5nq" path="res://arrow_tiles.tres" id="2_shend"]
 
 [node name="ArrowView" type="Node2D" unique_id=396112226]
-position = Vector2(258, 229)
 script = ExtResource("1_shend")
 
 [node name="ArrowTileMap" type="TileMapLayer" parent="." unique_id=558277805]

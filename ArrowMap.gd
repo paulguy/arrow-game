@@ -12,7 +12,6 @@ const FOLLOW_PREFERENCE : float = 5.0
 const QUADRANT_PREFERENCE : float = 20.0
 
 var DEAD_SNAKE : Snake = Snake.new(Vector2i.MIN, -1, SIDE_TOP)
-var map : PackedInt32Array
 var size : Vector2i
 var snakes : Array[Snake]
 var occupied_by : PackedInt32Array
@@ -31,8 +30,9 @@ const SIDE_NAME : Dictionary[Side, String] = {
 	SIDE_RIGHT: "right"
 }
 
+# mapped to the tileset rows, -1 has the effect of clearing
 enum ArrowCell {
-	EMPTY = 0,
+	EMPTY = -1,
 	LINE_H,
 	LINE_V,
 	LINE_BR,
@@ -110,10 +110,10 @@ func get_free_direction(pos : Vector2i, towards : Side) -> int:
 
 	# try to prioritize following around edges and in to crevaces
 	if not top_edge:
-		if not left_edge and map[size.x * (pos.y - 1) + pos.x - 1] != ArrowCell.EMPTY:
+		if not left_edge and occupied_by[size.x * (pos.y - 1) + pos.x - 1] >= 0:
 			# up left blocked
 			decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
-		if map[size.x * (pos.y - 1) + pos.x] != ArrowCell.EMPTY:
+		if occupied_by[size.x * (pos.y - 1) + pos.x] >= 0:
 			# up blocked
 			decision[SIDE_TOP] = 0.0
 			# prefer to follow parallel
@@ -121,55 +121,55 @@ func get_free_direction(pos : Vector2i, towards : Side) -> int:
 				decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
 			elif towards == SIDE_RIGHT:
 				decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
-		if not right_edge and map[size.x * (pos.y - 1) + pos.x + 1] != ArrowCell.EMPTY:
+		if not right_edge and occupied_by[size.x * (pos.y - 1) + pos.x + 1] >= 0:
 			# up right blocked
 			decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
 
 	if not bottom_edge:
 		# away from bottom edge
-		if not left_edge and map[size.x * (pos.y + 1) + pos.x - 1] != ArrowCell.EMPTY:
+		if not left_edge and occupied_by[size.x * (pos.y + 1) + pos.x - 1] >= 0:
 			# down left blocked
 			decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
-		if map[size.x * (pos.y + 1) + pos.x] != ArrowCell.EMPTY:
+		if occupied_by[size.x * (pos.y + 1) + pos.x] >= 0:
 			# down blocked
 			decision[SIDE_BOTTOM] = 0.0
 			if towards == SIDE_LEFT:
 				decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
 			elif towards == SIDE_RIGHT:
 				decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
-		if not right_edge and map[size.x * (pos.y + 1) + pos.x + 1] != ArrowCell.EMPTY:
+		if not right_edge and occupied_by[size.x * (pos.y + 1) + pos.x + 1] >= 0:
 			# down right blocked
 			decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
 
 	if not left_edge:
 		# away from left edge
-		if not top_edge and map[size.x * (pos.y - 1) + pos.x - 1] != ArrowCell.EMPTY:
+		if not top_edge and occupied_by[size.x * (pos.y - 1) + pos.x - 1] >= 0:
 			# up left blocked
 			decision[SIDE_TOP] *= FOLLOW_PREFERENCE
-		if map[size.x * pos.y + pos.x - 1] != ArrowCell.EMPTY:
+		if occupied_by[size.x * pos.y + pos.x - 1] >= 0:
 			# left blocked
 			decision[SIDE_LEFT] = 0.0
 			if towards == SIDE_TOP:
 				decision[SIDE_TOP] *= FOLLOW_PREFERENCE
 			elif towards == SIDE_BOTTOM:
 				decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
-		if not bottom_edge and map[size.x * (pos.y + 1) + pos.x - 1] != ArrowCell.EMPTY:
+		if not bottom_edge and occupied_by[size.x * (pos.y + 1) + pos.x - 1] >= 0:
 			# down left blocked
 			decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
 
 	if not right_edge:
 		# away from right edge
-		if not top_edge and map[size.x * (pos.y - 1) + pos.x + 1] != ArrowCell.EMPTY:
+		if not top_edge and occupied_by[size.x * (pos.y - 1) + pos.x + 1] >= 0:
 			# up right blocked
 			decision[SIDE_TOP] *= FOLLOW_PREFERENCE
-		if map[size.x * pos.y + pos.x + 1] != ArrowCell.EMPTY:
+		if occupied_by[size.x * pos.y + pos.x + 1] >= 0:
 			# right blocked
 			decision[SIDE_RIGHT] = 0.0
 			if towards == SIDE_TOP:
 				decision[SIDE_TOP] *= FOLLOW_PREFERENCE
 			elif towards == SIDE_BOTTOM:
 				decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
-		if not bottom_edge and map[size.x * (pos.y + 1) + pos.x + 1] != ArrowCell.EMPTY:
+		if not bottom_edge and occupied_by[size.x * (pos.y + 1) + pos.x + 1] >= 0:
 			# down right blocked
 			decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
 
@@ -190,86 +190,63 @@ func get_free_direction(pos : Vector2i, towards : Side) -> int:
 	return SIDE_RIGHT
 
 func apply_map(pos : Vector2i,
-			   snake_part : int,
+			   _snake_part : int,
 			   snake_index : int,
-			   _arg) -> bool:
-	map[size.x * pos.y + pos.x] = snake_part
+			   _arg):
 	occupied_by[size.x * pos.y + pos.x] = snake_index
-	return true
 
 func apply_map_checked(pos : Vector2i,
-					   snake_part : int,
+					   _snake_part : int,
 					   snake_index : int,
-					   _arg) -> bool:
+					   _arg):
 	# do nothing if it's out of range
 	if pos.x >= 0 and pos.x < size.x and \
 	   pos.y >= 0 and pos.y < size.y:
-		map[size.x * pos.y + pos.x] = snake_part
 		occupied_by[size.x * pos.y + pos.x] = snake_index
-		return true
-	return false
 
 func apply_tilemap(pos : Vector2i,
 				   snake_part : int,
 				   _snake_index : int,
-				   tile_map : TileMapLayer) -> bool:
-	tile_map.set_cell(pos, 0, Vector2i(0, snake_part - 1))
-	return true
+				   tile_map : TileMapLayer):
+	tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
 
 func apply_both(pos : Vector2i,
 				snake_part : int,
 				snake_index : int,
-				tile_map : TileMapLayer) -> bool:
-	map[size.x * pos.y + pos.x] = snake_part
+				tile_map : TileMapLayer):
 	occupied_by[size.x * pos.y + pos.x] = snake_index
-	tile_map.set_cell(pos, 0, Vector2i(0, snake_part - 1))
-	return true
+	tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
 
 func delete_map(pos : Vector2i,
 				_snake_part : int,
 				_snake_index : int,
-				_arg) -> bool:
-	map[size.x * pos.y + pos.x] = ArrowCell.EMPTY
+				_arg):
 	occupied_by[size.x * pos.y + pos.x] = -1
-	return true
-
-func delete_fly(pos : Vector2i,
-				_snake_part : int,
-				_snake_index : int,
-				_arg) -> bool:
-	map[size.x * pos.y + pos.x] = ArrowCell.FLY
-	occupied_by[size.x * pos.y + pos.x] = -1
-	return true
 
 func delete_tilemap(pos : Vector2i,
 					_snake_part : int,
 					_snake_index : int,
-					tile_map : TileMapLayer) -> bool:
+					tile_map : TileMapLayer):
 	tile_map.erase_cell(pos)
-	return true
 
 func delete_both(pos : Vector2i,
 				 _snake_part : int,
 				 _snake_index : int,
-				 tile_map : TileMapLayer) -> bool:
-	map[size.x * pos.y + pos.x] = ArrowCell.EMPTY
+				 tile_map : TileMapLayer):
 	occupied_by[size.x * pos.y + pos.x] = -1
 	tile_map.erase_cell(pos)
-	return true
 
 func delete_astar(pos : Vector2i,
 				 _snake_part : int,
 				 _snake_index : int,
-				 astar : AStarGrid2D) -> bool:
+				 astar : AStarGrid2D):
 	astar.set_point_solid(pos, false)
-	return true
 
 func do_apply_snake(index : int,
 					action : Callable,
 					action_arg = null):
 	var snake : Snake = snakes[index]
 	var pos : Vector2i = snake.pos
-	var length : int = 0
 
 	match snake.headTowards:
 		SIDE_TOP:
@@ -280,7 +257,6 @@ func do_apply_snake(index : int,
 			action.call(pos, ArrowCell.ARROW_L, index, action_arg)
 		SIDE_RIGHT:
 			action.call(pos, ArrowCell.ARROW_R, index, action_arg)
-	length += 1
 
 	if len(snake.nextTowards) == 0:
 		pass
@@ -293,8 +269,6 @@ func do_apply_snake(index : int,
 			action.call(pos, NEXT_CELL[Vector2i(snake.nextTowards[i], snake.nextTowards[i+1])], index, action_arg)
 		pos += UPDATE_POS[snake.nextTowards[-1]]
 		action.call(pos, NEXT_CELL[Vector2i(snake.nextTowards[-1], snake.nextTowards[-1])], index, action_arg)
-
-	return length
 
 func apply_snake_map(index : int):
 	do_apply_snake(index, apply_map)
@@ -315,13 +289,6 @@ func delete_snake_map(index : int):
 	do_apply_snake(index, delete_map)
 	snakes[index] = DEAD_SNAKE
 
-func delete_snake_fly(index : int):
-	var snake : Snake = snakes[index]
-	if snake == DEAD_SNAKE:
-		return
-	do_apply_snake(index, delete_fly)
-	snakes[index] = DEAD_SNAKE
-
 func delete_snake_tilemap(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, delete_tilemap, tile_map)
 
@@ -336,15 +303,11 @@ func delete_snake_astar(index : int, astar : AStarGrid2D):
 	do_apply_snake(index, delete_astar, astar)
 
 func apply_map_full(tile_map : TileMapLayer):
-	var cell : int
-
 	tile_map.clear()
 
-	for y in size.y:
-		for x in size.x:
-			cell = map[size.x * y + x]
-			if cell > 0:
-				tile_map.set_cell(Vector2i(x, y), 0, Vector2i(0, cell - 1))
+	for i in len(snakes):
+		apply_snake_tilemap(i, tile_map)
+
 	tile_map.notify_runtime_tile_data_update()
 
 func apply_astar(astar : AStarGrid2D):
@@ -411,16 +374,18 @@ func make_snake(pos : Vector2i,
 				initial : int):
 	var snake : Snake = Snake.new(pos, length, towards)
 	snakes.append(snake)
-	# -1 for last index
-	do_apply_snake(-1, apply_map_checked)
+	var index : int = len(snakes) - 1
+	do_apply_snake(index, apply_map_checked)
 	var update : Vector2i = UPDATE_POS[towards]
 	for i in initial:
-		if map[size.x * (snake.pos.y + update.y) + (snake.pos.x + update.x)] != ArrowCell.EMPTY:
+		if occupied_by[size.x * (snake.pos.y + update.y) + (snake.pos.x + update.x)] >= 0:
 			break
-		do_move_snake(-1, towards, apply_map_checked)
+		do_move_snake(index, towards, apply_map_checked)
 	for i in length - 2:
-		if not move_snake_random(-1):
+		if not move_snake_random(index):
 			break
+
+	# find if the snake goes off the screen and trim it
 	var bodypos : Vector2i = snake.pos
 	for i in len(snake.nextTowards):
 		bodypos += UPDATE_POS[snake.nextTowards[i]]
@@ -428,17 +393,11 @@ func make_snake(pos : Vector2i,
 		   bodypos.y < 0 or bodypos.y > size.y - 1:
 			snake.trim(i + 1)
 			break
-	# snakes are coming in from the edges, so point them back towards the edges
-	snake.reverse()
-	do_apply_snake(-1, apply_map)
 
 func _init(size : Vector2i,
 			min_length : int,
 			max_length : int):
 	self.size = size
-	map = PackedInt32Array()
-	map.resize(size.x * size.y)
-	map.fill(ArrowCell.EMPTY)
 	occupied_by = PackedInt32Array()
 	occupied_by.resize(size.x * size.y)
 	occupied_by.fill(-1)
@@ -449,7 +408,7 @@ func _init(size : Vector2i,
 	while empties:
 		empties = false
 		for x in size.x - 1:
-			if map[x] == ArrowCell.EMPTY:
+			if occupied_by[x] < 0:
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(x, 0),
@@ -458,7 +417,7 @@ func _init(size : Vector2i,
 							   randi_range(size.y / 2, size.y - 1))
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
-			if map[size.x * (size.y - 1) + x] == ArrowCell.EMPTY:
+			if occupied_by[size.x * (size.y - 1) + x] < 0:
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(x, size.y - 1),
@@ -468,7 +427,7 @@ func _init(size : Vector2i,
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
 		for y in size.x - 1:
-			if map[size.x * y] == ArrowCell.EMPTY:
+			if occupied_by[size.x * y] < 0:
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(0, y),
@@ -477,7 +436,7 @@ func _init(size : Vector2i,
 							   randi_range(size.x / 2, size.x - 1))
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
-			if map[size.x * y + (size.x - 1)] == ArrowCell.EMPTY:
+			if occupied_by[size.x * y + (size.x - 1)] < 0:
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(size.y - 1, y),
@@ -487,11 +446,16 @@ func _init(size : Vector2i,
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
 
+	# final process the snakes
 	for i in len(snakes):
-		var snake : Snake = snakes[i]
-		if len(snake.nextTowards) < min_length - 1:
+		# delete overly short snakes
+		if len(snakes[i].nextTowards) < min_length - 1:
+			# TODO create flies
 			delete_snake_map(i)
-			map[size.x * snake.pos.y + snake.pos.x] = ArrowCell.FLY
+		else:
+			# snakes are coming in from the edges, so point them back towards the edges
+			snakes[i].reverse()
+			do_apply_snake(i, apply_map)
 
 func select_snake(pos : Vector2i) -> int:
 	if pos.x < 0 or pos.y < 0 or pos.x >= size.x or pos.y >= size.y:
@@ -501,8 +465,9 @@ func select_snake(pos : Vector2i) -> int:
 func get_random_free_fly(astar : AStarGrid2D) -> Array[Vector2i]:
 	var from : Vector2i = Vector2i(randi_range(astar.region.position.x + 1, astar.region.end.x - 2),
 								   randi_range(astar.region.position.y + 1, astar.region.end.y - 2))
-	if map[size.x * from.y + from.x] != ArrowCell.FLY:
-		return []
+	# TODO select from flies
+	return []
+
 	var center : Vector2i = astar.region.get_center()
 	var to : Vector2i = Vector2i.ZERO
 	if from.x > size.y - 1 - from.y:
@@ -522,6 +487,6 @@ func get_random_free_fly(astar : AStarGrid2D) -> Array[Vector2i]:
 
 	var path : Array[Vector2i] = astar.get_id_path(from, to)
 	if len(path) > 0:
-		map[size.x * from.y + from.x] = ArrowCell.EMPTY
+		# TODO delete fly
 		return path
 	return []

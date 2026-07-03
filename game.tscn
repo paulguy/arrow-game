@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://buu73g1xdeni6"]
+
+[ext_resource type="PackedScene" uid="uid://decli3x5cit4b" path="res://ArrowView.tscn" id="1_80nbo"]
+
+[node name="Game" type="Node2D" unique_id=314868065]
+
+[node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("1_80nbo")]

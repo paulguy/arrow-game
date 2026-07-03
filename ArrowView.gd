@@ -101,7 +101,7 @@ func _physics_process(_delta : float):
 		else:
 			pos += ArrowMap.UPDATE_POS[active_snake.headTowards]
 			# check if the space is empty or will be empty when the snake moves
-			if arrow_map.map[arrow_map.size.x * pos.y + pos.x] == ArrowMap.ArrowCell.EMPTY or \
+			if arrow_map.occupied_by[arrow_map.size.x * pos.y + pos.x] < 0 or \
 			   pos == arrow_map.snakes[active_index].get_tail_pos():
 				# moving
 				arrow_map.move_snake_both(active_index, active_snake.headTowards, tile_map)
