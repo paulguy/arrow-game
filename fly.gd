@@ -3,11 +3,17 @@ extends RigidBody2D
 const MAX_ANGLE_OFFSET : float = 0.95
 const ACCEL : float = 5.0
 const TIMEOUT : float = 5.0
+const ANIM_FRAMES : int = 2
+const FRAME_TIME : float = 0.1
 
 var path : Array[Vector2i]
 var region : Rect2
 var cell_size : Vector2i
 var time : float = 0.0
+var anim_time : float = 0.0
+var anim : int = 0
+
+@onready var sprite : Sprite2D = $Sprite
 
 func _physics_process(delta : float):
 	var view : Rect2 = get_viewport_rect()
@@ -47,3 +53,7 @@ func _physics_process(delta : float):
 	apply_central_force(Vector2.from_angle(towards) * ACCEL)
 
 	time += delta
+
+func _process(delta : float):
+	anim_time = fmod(anim_time + delta, FRAME_TIME * ANIM_FRAMES)
+	sprite.frame_coords.x = floor(anim_time / FRAME_TIME)
