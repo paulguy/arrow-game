@@ -1,7 +1,44 @@
 [gd_scene format=3 uid="uid://buu73g1xdeni6"]
 
 [ext_resource type="PackedScene" uid="uid://decli3x5cit4b" path="res://ArrowView.tscn" id="1_80nbo"]
+[ext_resource type="Script" uid="uid://u033pomy8yui" path="res://game.gd" id="1_fc0e3"]
+[ext_resource type="Texture2D" uid="uid://bwpn0yy51x4p" path="res://background-1.png" id="2_e2o6t"]
+[ext_resource type="Texture2D" uid="uid://d1kv6id8hlo2a" path="res://border.png" id="3_7jktm"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ryrav"]
+texture = ExtResource("3_7jktm")
+texture_region_size = Vector2i(8, 8)
+0:0/0 = 0
+1:0/next_alternative_id = 2
+1:0/0 = 0
+1:0/1 = 1
+1:0/1/transpose = true
+2:0/0 = 0
+3:0/next_alternative_id = 2
+3:0/0 = 0
+3:0/1 = 1
+3:0/1/transpose = true
+4:0/next_alternative_id = 2
+4:0/0 = 0
+4:0/1 = 1
+4:0/1/transpose = true
+5:0/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_o8fo8"]
+tile_size = Vector2i(8, 8)
+sources/0 = SubResource("TileSetAtlasSource_ryrav")
 
 [node name="Game" type="Node2D" unique_id=314868065]
+script = ExtResource("1_fc0e3")
 
-[node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("1_80nbo")]
+[node name="Background" type="Sprite2D" parent="." unique_id=156453144]
+texture = ExtResource("2_e2o6t")
+centered = false
+
+[node name="Border" type="TileMapLayer" parent="." unique_id=1969743279]
+tile_set = SubResource("TileSet_o8fo8")
+
+[node name="Field Background" type="Polygon2D" parent="Border" unique_id=49738478]
+color = Color(0, 0, 0, 0.49803922)
+
+[node name="ArrowView" parent="Border" unique_id=396112226 instance=ExtResource("1_80nbo")]

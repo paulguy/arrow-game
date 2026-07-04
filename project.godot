@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Arrow Game"
-run/main_scene="res://ArrowView.tscn"
+run/main_scene="uid://buu73g1xdeni6"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
