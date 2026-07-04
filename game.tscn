@@ -41,18 +41,8 @@ sources/0 = SubResource("TileSetAtlasSource_ryrav")
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_o8fo8"]
 shader = ExtResource("5_7jktm")
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_o8fo8"]
-viewport_path = NodePath("ArrowViewport")
-
 [node name="Game" type="Node2D" unique_id=314868065]
 script = ExtResource("1_fc0e3")
-
-[node name="ArrowViewport" type="SubViewport" parent="." unique_id=1079277244]
-disable_3d = true
-transparent_bg = true
-size = Vector2i(800, 600)
-
-[node name="ArrowView" parent="ArrowViewport" unique_id=396112226 instance=ExtResource("1_80nbo")]
 
 [node name="Background" type="Sprite2D" parent="." unique_id=156453144]
 texture = ExtResource("2_e2o6t")
@@ -64,14 +54,14 @@ tile_set = SubResource("TileSet_o8fo8")
 [node name="Field Background" type="Polygon2D" parent="Border" unique_id=49738478]
 color = Color(0, 0, 0, 0.49803922)
 
+[node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("1_80nbo")]
+
 [node name="Arrow Viewport Blur" type="Polygon2D" parent="." unique_id=80406106]
 material = SubResource("ShaderMaterial_o8fo8")
 position = Vector2(2, 2)
-texture = SubResource("ViewportTexture_o8fo8")
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 
 [node name="Arrow Viewport View" type="Polygon2D" parent="." unique_id=2075876877]
-texture = SubResource("ViewportTexture_o8fo8")
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)

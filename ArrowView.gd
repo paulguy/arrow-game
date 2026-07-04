@@ -2,7 +2,8 @@ extends Node2D
 
 const FLY_CHANCE : float = 0.01
 
-@onready var tile_map : TileMapLayer = $"ArrowTileMap"
+@onready var tile_map : TileMapLayer = $"SubViewport/ArrowTileMap"
+@onready var coll_tile_map : TileMapLayer = $"Arrow Collision TileMap"
 var fly_res : Resource = preload("res://fly.tscn")
 
 var arrow_map : ArrowMap
@@ -12,13 +13,19 @@ var active_snake : Snake = null
 var offscreen_snake : Snake = null
 var offscreen_overhang : int
 var astar : AStarGrid2D
+var tile_size : Vector2i
+
+func _ready():
+	tile_size = tile_map.tile_set.tile_size
 
 func make_map(size : Vector2i):
-	position = (get_viewport_rect().end - Vector2(size * tile_map.tile_set.tile_size)) / 2.0
+	position = (get_viewport_rect().end - Vector2(size * tile_size)) / 2.0
+	tile_map.position = position
 	if arrow_map != null:
 		arrow_map.free()
 	arrow_map = ArrowMap.new(size, 3, 10)
 	arrow_map.apply_map_full(tile_map)
+	arrow_map.apply_map_full(coll_tile_map)
 
 	astar = AStarGrid2D.new()
 	#astar.cell_size = Vector2.ONE
@@ -34,15 +41,19 @@ func make_map(size : Vector2i):
 
 func set_snake_column(snake : Snake, column : int):
 	var pos : Vector2i = snake.pos
-	tile_map.set_cell(pos, 0, Vector2i(column, tile_map.get_cell_atlas_coords(pos).y))
+	var y : int = tile_map.get_cell_atlas_coords(pos).y
+	tile_map.set_cell(pos, 0, Vector2i(column, y))
+	coll_tile_map.set_cell(pos, 0, Vector2i(column, y))
 	for towards in snake.nextTowards:
 		pos += ArrowMap.UPDATE_POS[towards]
-		tile_map.set_cell(pos, 0, Vector2i(column, tile_map.get_cell_atlas_coords(pos).y))
+		y = tile_map.get_cell_atlas_coords(pos).y
+		tile_map.set_cell(pos, 0, Vector2i(column, y))
+		coll_tile_map.set_cell(pos, 0, Vector2i(column, y))
 
 func click_snake(pos : Vector2):
 	if active_snake == null and \
 	   offscreen_snake == null:
-		var snake_idx : int = arrow_map.select_snake(pos / Vector2(tile_map.tile_set.tile_size))
+		var snake_idx : int = arrow_map.select_snake(pos / Vector2(tile_size))
 		if snake_idx >= 0:
 			if snake_idx == last_snake:
 				# starting
@@ -80,6 +91,7 @@ func clear_fly(from : Vector2i):
 	# mark space empty
 	arrow_map.occupied_by[arrow_map.size.x * from.y + from.x] = -1
 	tile_map.erase_cell(from)
+	coll_tile_map.erase_cell(from)
 
 func pop_random_free_fly(astar : AStarGrid2D) -> Array[Vector2i]:
 	# select within borders, astar grid is from -1,-1 to size+2, size+2
@@ -98,9 +110,9 @@ func pop_random_free_fly(astar : AStarGrid2D) -> Array[Vector2i]:
 func make_fly(flypath : Array[Vector2i]):
 	var fly : RigidBody2D = fly_res.instantiate()
 	fly.path = flypath
-	fly.region = Rect2(tile_map.tile_set.tile_size, (arrow_map.size - Vector2i.ONE) * tile_map.tile_set.tile_size)
-	fly.cell_size = tile_map.tile_set.tile_size
-	fly.position = Vector2(flypath[0] * tile_map.tile_set.tile_size)
+	fly.region = Rect2(tile_size, (arrow_map.size - Vector2i.ONE) * tile_size)
+	fly.cell_size = tile_size
+	fly.position = Vector2(flypath[0] * tile_size)
 	add_child(fly)
 
 func _physics_process(_delta : float):
@@ -146,37 +158,40 @@ func _physics_process(_delta : float):
 			   pos == arrow_map.snakes[active_index].get_tail_pos():
 				# moving
 				arrow_map.move_snake_both(active_index, active_snake.headTowards, tile_map)
+				arrow_map.apply_snake_both(active_index, coll_tile_map)
 			else:
 				# hit snake
 				arrow_map.delete_snake_both(active_index, tile_map)
+				arrow_map.delete_snake_both(active_index, coll_tile_map)
 				# restore original snake
 				arrow_map.snakes[active_index] = active_snake
 				arrow_map.apply_snake_both(active_index, tile_map)
+				arrow_map.apply_snake_both(active_index, coll_tile_map)
 				active_snake = null
 				active_index = -1
 
 	if offscreen_snake != null:
 		# snake moving out of the map
 		if (offscreen_snake.headTowards == SIDE_LEFT and \
-		   (offscreen_snake.pos.x + offscreen_overhang) * tile_map.tile_set.tile_size.x + global_position.x < 0) or \
+		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + global_position.x < 0) or \
 		   (offscreen_snake.headTowards == SIDE_RIGHT and \
-		   (offscreen_snake.pos.x - offscreen_overhang) * tile_map.tile_set.tile_size.x + global_position.x > get_viewport_rect().end.x) or \
+		   (offscreen_snake.pos.x - offscreen_overhang) * tile_size.x + global_position.x > get_viewport_rect().end.x) or \
 		   (offscreen_snake.headTowards == SIDE_TOP and \
-		   (offscreen_snake.pos.y + offscreen_overhang) * tile_map.tile_set.tile_size.y + global_position.y < 0) or \
+		   (offscreen_snake.pos.y + offscreen_overhang) * tile_size.y + global_position.y < 0) or \
 		   (offscreen_snake.headTowards == SIDE_BOTTOM and \
-		   (offscreen_snake.pos.y - offscreen_overhang) * tile_map.tile_set.tile_size.y + global_position.y > get_viewport_rect().end.y):
+		   (offscreen_snake.pos.y - offscreen_overhang) * tile_size.y + global_position.y > get_viewport_rect().end.y):
 			# went offscreen
 			arrow_map.snakes.append(offscreen_snake)
 			arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, tile_map)
+			arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
 			arrow_map.snakes.pop_back()
 			offscreen_snake.free()
 			offscreen_snake = null
 		else:
 			arrow_map.snakes.append(offscreen_snake)
 			arrow_map.move_snake_tilemap(len(arrow_map.snakes) - 1, offscreen_snake.headTowards, tile_map)
+			arrow_map.apply_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
 			arrow_map.snakes.pop_back()
 
-	tile_map.notify_runtime_tile_data_update()
-
-func get_tile_size() -> Vector2i:
-	return tile_map.tile_set.tile_size
+func get_viewport_texture() -> ViewportTexture:
+	return $SubViewport.get_texture()

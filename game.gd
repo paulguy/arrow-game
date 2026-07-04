@@ -30,13 +30,13 @@ const BORDER_SHADOW_B_ALT : int = 0
 const BORDER_SHADOW_R : Vector2i = Vector2i(1, 1)
 const BORDER_SHADOW_R_ALT : int = 1
 
-@onready var arrow_view : Node2D = $"ArrowViewport/ArrowView"
+@onready var arrow_view : Node2D = $"ArrowView"
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
 
 func setup_map(size : Vector2i):
 	var tile_size : Vector2 = Vector2(border.tile_set.tile_size)
-	border.position = (get_viewport_rect().end - Vector2(size * arrow_view.get_tile_size())) / 2.0 - tile_size
+	border.position = (get_viewport_rect().end - (Vector2(size) * tile_size)) / 2.0 - tile_size
 	border.set_cell(Vector2i(0, 0), 0, BORDER_TL, BORDER_TL_ALT)
 	border.set_cell(Vector2i(size.x + 1, 0), 0, BORDER_TR, BORDER_TR_ALT)
 	border.set_cell(Vector2i(0, size.y + 1), 0, BORDER_BL, BORDER_BL_ALT)
@@ -64,6 +64,9 @@ func setup_map(size : Vector2i):
 	arrow_view.make_map(size)
 
 func _ready():
+	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
+	$"Arrow Viewport Blur".texture = viewport_texture
+	$"Arrow Viewport View".texture = viewport_texture
 	setup_map(DEFAULT_SIZE)
 
 func _input(e : InputEvent):
