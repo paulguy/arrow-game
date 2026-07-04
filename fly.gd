@@ -11,7 +11,6 @@ var region : Rect2
 var cell_size : Vector2i
 var time : float = 0.0
 var anim_time : float = 0.0
-var anim : int = 0
 
 @onready var sprite : Sprite2D = $Sprite
 

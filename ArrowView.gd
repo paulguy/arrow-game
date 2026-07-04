@@ -13,10 +13,8 @@ var offscreen_snake : Snake = null
 var offscreen_overhang : int
 var astar : AStarGrid2D
 
-func _ready():
-	position = tile_map.tile_set.tile_size
-
 func make_map(size : Vector2i):
+	position = (get_viewport_rect().end - Vector2(size * tile_map.tile_set.tile_size)) / 2.0
 	if arrow_map != null:
 		arrow_map.free()
 	arrow_map = ArrowMap.new(size, 3, 10)
@@ -41,25 +39,22 @@ func set_snake_column(snake : Snake, column : int):
 		pos += ArrowMap.UPDATE_POS[towards]
 		tile_map.set_cell(pos, 0, Vector2i(column, tile_map.get_cell_atlas_coords(pos).y))
 
-func _input(e : InputEvent):
+func click_snake(pos : Vector2):
 	if active_snake == null and \
-	   offscreen_snake == null and \
-	   e is InputEventMouseButton:
-		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
-		if mouse_e.pressed and mouse_e.button_mask & MOUSE_BUTTON_MASK_LEFT:
-			var snake_idx : int = arrow_map.select_snake(get_local_mouse_position() / Vector2(tile_map.tile_set.tile_size))
-			if snake_idx >= 0:
-				if snake_idx == last_snake:
-					# starting
-					active_index = snake_idx
-					active_snake = arrow_map.snakes[active_index].copy()
-					set_snake_column(active_snake, 0)
-					last_snake = -1
-				else:
-					if last_snake >= 0:
-						set_snake_column(arrow_map.snakes[last_snake], 0)
-					set_snake_column(arrow_map.snakes[snake_idx], 1)
-					last_snake = snake_idx
+	   offscreen_snake == null:
+		var snake_idx : int = arrow_map.select_snake(pos / Vector2(tile_map.tile_set.tile_size))
+		if snake_idx >= 0:
+			if snake_idx == last_snake:
+				# starting
+				active_index = snake_idx
+				active_snake = arrow_map.snakes[active_index].copy()
+				set_snake_column(active_snake, 0)
+				last_snake = -1
+			else:
+				if last_snake >= 0:
+					set_snake_column(arrow_map.snakes[last_snake], 0)
+				set_snake_column(arrow_map.snakes[snake_idx], 1)
+				last_snake = snake_idx
 
 func get_fly_path(from : Vector2i) -> Array[Vector2i]:
 	var center : Vector2i = astar.region.get_center()

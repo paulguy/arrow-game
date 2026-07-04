@@ -19,8 +19,18 @@ const BORDER_L_ALT : int = 1
 const BORDER_R : Vector2i = Vector2i(4, 0)
 const BORDER_R_ALT : int = 1
 const BORDER_BG : Vector2i = Vector2i(5, 0)
+const BORDER_SHADOW_BL : Vector2i = Vector2i(0, 1)
+const BORDER_SHADOW_BL_ALT : int = 0
+const BORDER_SHADOW_TR : Vector2i = Vector2i(0, 1)
+const BORDER_SHADOW_TR_ALT : int = 1
+const BORDER_SHADOW_BR : Vector2i = Vector2i(2, 1)
+const BORDER_SHADOW_BR_ALT : int = 0
+const BORDER_SHADOW_B : Vector2i = Vector2i(1, 1)
+const BORDER_SHADOW_B_ALT : int = 0
+const BORDER_SHADOW_R : Vector2i = Vector2i(1, 1)
+const BORDER_SHADOW_R_ALT : int = 1
 
-@onready var arrow_view : Node2D = $"Border/ArrowView"
+@onready var arrow_view : Node2D = $"ArrowViewport/ArrowView"
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
 
@@ -31,15 +41,19 @@ func setup_map(size : Vector2i):
 	border.set_cell(Vector2i(size.x + 1, 0), 0, BORDER_TR, BORDER_TR_ALT)
 	border.set_cell(Vector2i(0, size.y + 1), 0, BORDER_BL, BORDER_BL_ALT)
 	border.set_cell(Vector2i(size.x + 1, size.y + 1), 0, BORDER_BR, BORDER_BR_ALT)
+	border.set_cell(Vector2i(0, size.y + 2), 0, BORDER_SHADOW_BL, BORDER_SHADOW_BL_ALT)
+	border.set_cell(Vector2i(size.x + 2, 0), 0, BORDER_SHADOW_TR, BORDER_SHADOW_TR_ALT)
+	border.set_cell(Vector2i(size.x + 1, size.y + 2), 0, BORDER_SHADOW_B, BORDER_SHADOW_B_ALT)
+	border.set_cell(Vector2i(size.x + 2, size.y + 1), 0, BORDER_SHADOW_R, BORDER_SHADOW_R_ALT)
+	border.set_cell(Vector2i(size.x + 2, size.y + 2), 0, BORDER_SHADOW_BR, BORDER_SHADOW_BR_ALT)
 	for x in size.x:
 		border.set_cell(Vector2i(x + 1, 0), 0, BORDER_T, BORDER_T_ALT)
 		border.set_cell(Vector2i(x + 1, size.y + 1), 0, BORDER_B, BORDER_B_ALT)
+		border.set_cell(Vector2i(x + 1, size.y + 2), 0, BORDER_SHADOW_B, BORDER_SHADOW_B_ALT)
 	for y in size.y:
 		border.set_cell(Vector2i(0, y + 1), 0, BORDER_L, BORDER_L_ALT)
 		border.set_cell(Vector2i(size.x + 1, y + 1), 0, BORDER_R, BORDER_R_ALT)
-#	for y in size.y:
-#		for x in size.x:
-#			border.set_cell(Vector2i(x + 1, y + 1), 0, BORDER_BG)
+		border.set_cell(Vector2i(size.x + 2, y + 1), 0, BORDER_SHADOW_R, BORDER_SHADOW_R_ALT)
 	field_bg.position = tile_size
 	field_bg.polygon = PackedVector2Array([
 		Vector2(0, 0),
@@ -51,3 +65,9 @@ func setup_map(size : Vector2i):
 
 func _ready():
 	setup_map(DEFAULT_SIZE)
+
+func _input(e : InputEvent):
+	if e is InputEventMouseButton:
+		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
+		if mouse_e.pressed and mouse_e.button_mask & MOUSE_BUTTON_MASK_LEFT:
+			arrow_view.click_snake(get_global_mouse_position() - arrow_view.position)
