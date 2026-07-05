@@ -1,9 +1,12 @@
 extends Node2D
 
 const FLY_CHANCE : float = 0.01
+const SLOW_RATIO : float = 1.1
 
 @onready var tile_map : TileMapLayer = $"SubViewport/ArrowTileMap"
-@onready var coll_tile_map : TileMapLayer = $"Arrow Collision TileMap"
+@onready var coll_tile_map : TileMapLayer = $"FliesViewport/Arrow Collision TileMap"
+@onready var tile_map_camera : Camera2D = $"SubViewport/Camera2D"
+@onready var flies_camera : Camera2D = $"FliesViewport/Camera2D"
 var fly_res : Resource = preload("res://fly.tscn")
 
 var arrow_map : ArrowMap
@@ -14,13 +17,18 @@ var offscreen_snake : Snake = null
 var offscreen_overhang : int
 var astar : AStarGrid2D
 var tile_size : Vector2i
+var physics_delta : float = 1.0 / ProjectSettings.get_setting("physics/common/physics_ticks_per_second")
+var last_delta : float = 0.0
 
 func _ready():
 	tile_size = tile_map.tile_set.tile_size
+	$SubViewport.size = get_viewport_rect().size
+	$FliesViewport.size = get_viewport_rect().size
 
 func make_map(size : Vector2i):
-	position = (get_viewport_rect().end - Vector2(size * tile_size)) / 2.0
-	tile_map.position = position
+	tile_map.position = (get_viewport_rect().size - Vector2(size * tile_size)) / 2.0
+	coll_tile_map.position = (get_viewport_rect().size - Vector2(size * tile_size)) / 2.0
+
 	if arrow_map != null:
 		arrow_map.free()
 	arrow_map = ArrowMap.new(size, 3, 10)
@@ -112,14 +120,20 @@ func make_fly(flypath : Array[Vector2i]):
 	fly.path = flypath
 	fly.region = Rect2(tile_size, (arrow_map.size - Vector2i.ONE) * tile_size)
 	fly.cell_size = tile_size
-	fly.position = Vector2(flypath[0] * tile_size)
-	add_child(fly)
+	fly.position = coll_tile_map.position + Vector2(flypath[0] * tile_size)
+	$FliesViewport.add_child(fly)
+
+func _process(delta : float):
+	# keep track of real frame time
+	last_delta = delta
 
 func _physics_process(_delta : float):
-	for i in arrow_map.size.x * arrow_map.size.y * FLY_CHANCE:
-		var flypath : Array[Vector2i] = pop_random_free_fly(astar)
-		if len(flypath) > 0 and flypath[0].x >= 0 and flypath[0].y >= 0:
-			make_fly(flypath)
+	if last_delta < physics_delta * SLOW_RATIO:
+		# only try to make flies if it's not running slow
+		for i in arrow_map.size.x * arrow_map.size.y * FLY_CHANCE:
+			var flypath : Array[Vector2i] = pop_random_free_fly(astar)
+			if len(flypath) > 0 and flypath[0].x >= 0 and flypath[0].y >= 0:
+				make_fly(flypath)
 
 	if active_snake != null:
 		var snake = arrow_map.snakes[active_index]
@@ -173,13 +187,13 @@ func _physics_process(_delta : float):
 	if offscreen_snake != null:
 		# snake moving out of the map
 		if (offscreen_snake.headTowards == SIDE_LEFT and \
-		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + global_position.x < 0) or \
+		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + tile_map.position.x - tile_map_camera.position.x < 0) or \
 		   (offscreen_snake.headTowards == SIDE_RIGHT and \
-		   (offscreen_snake.pos.x - offscreen_overhang) * tile_size.x + global_position.x > get_viewport_rect().end.x) or \
+		   (offscreen_snake.pos.x - offscreen_overhang) * tile_size.x + tile_map.position.x - tile_map_camera.position.x > get_viewport_rect().end.x) or \
 		   (offscreen_snake.headTowards == SIDE_TOP and \
-		   (offscreen_snake.pos.y + offscreen_overhang) * tile_size.y + global_position.y < 0) or \
+		   (offscreen_snake.pos.y + offscreen_overhang) * tile_size.y + tile_map.position.y - tile_map_camera.position.y < 0) or \
 		   (offscreen_snake.headTowards == SIDE_BOTTOM and \
-		   (offscreen_snake.pos.y - offscreen_overhang) * tile_size.y + global_position.y > get_viewport_rect().end.y):
+		   (offscreen_snake.pos.y - offscreen_overhang) * tile_size.y + tile_map.position.y - tile_map_camera.position.y > get_viewport_rect().end.y):
 			# went offscreen
 			arrow_map.snakes.append(offscreen_snake)
 			arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, tile_map)
@@ -195,3 +209,10 @@ func _physics_process(_delta : float):
 
 func get_viewport_texture() -> ViewportTexture:
 	return $SubViewport.get_texture()
+
+func get_flies_viewport_texture() -> ViewportTexture:
+	return $FliesViewport.get_texture()
+
+func set_view(pos : Vector2):
+	tile_map_camera.position = -pos
+	flies_camera.position = -pos

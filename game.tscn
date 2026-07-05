@@ -65,3 +65,7 @@ uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 [node name="Arrow Viewport View" type="Polygon2D" parent="." unique_id=2075876877]
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
+
+[node name="Flies Viewport View" type="Polygon2D" parent="." unique_id=431061337]
+polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
+uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)

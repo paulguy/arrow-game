@@ -5,11 +5,13 @@ const BASE_CHANCE : float = 0.01
 const CHANCE_MULTIPLIER : float = 1.1
 
 # base preference for an arrow to go forward
-const FORWARD_PREFERENCE : float = 3.0
+const FORWARD_PREFERENCE : float = 4.0
 # preference for an arrow to follow along other arrows
-const FOLLOW_PREFERENCE : float = 5.0
+const ALONG_SNAKE_PREFERENCE : float = 8.0
 # bias based on what quadrant an arrow is in to try to get them towards center
-const QUADRANT_PREFERENCE : float = 20.0
+const QUADRANT_PREFERENCE : float = 10.0
+# likelihood to follow along the edges
+const ALONG_EDGE_PREFERENCE : float = 0.1
 
 var DEAD_SNAKE : Snake = Snake.new(Vector2i.MIN, -1, SIDE_TOP)
 var size : Vector2i
@@ -99,84 +101,92 @@ func get_free_direction(pos : Vector2i, towards : Side) -> int:
 	if pos.y > 0:
 		top_edge = false
 	else:
+		decision[SIDE_LEFT] *= ALONG_EDGE_PREFERENCE
 		decision[SIDE_TOP] = 0.0
+		decision[SIDE_RIGHT] *= ALONG_EDGE_PREFERENCE
 	if pos.y < size.y - 1:
 		bottom_edge = false
 	else:
+		decision[SIDE_LEFT] *= ALONG_EDGE_PREFERENCE
 		decision[SIDE_BOTTOM] = 0.0
+		decision[SIDE_RIGHT] *= ALONG_EDGE_PREFERENCE
 	if pos.x > 0:
 		left_edge = false
 	else:
+		decision[SIDE_TOP] *= ALONG_EDGE_PREFERENCE
 		decision[SIDE_LEFT] = 0.0
+		decision[SIDE_BOTTOM] *= ALONG_EDGE_PREFERENCE
 	if pos.x < size.x - 1:
 		right_edge = false
 	else:
+		decision[SIDE_TOP] *= ALONG_EDGE_PREFERENCE
 		decision[SIDE_RIGHT] = 0.0
+		decision[SIDE_BOTTOM] *= ALONG_EDGE_PREFERENCE
 
 	# try to prioritize following around edges and in to crevaces
 	if not top_edge:
 		if not left_edge and space_occupied(pos + Vector2i.UP + Vector2i.LEFT):
 			# up left blocked
-			decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
+			decision[SIDE_LEFT] *= ALONG_SNAKE_PREFERENCE
 		if space_occupied(pos + Vector2i.UP):
 			# up blocked
 			decision[SIDE_TOP] = 0.0
 			# prefer to follow parallel
 			if towards == SIDE_LEFT:
-				decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
+				decision[SIDE_LEFT] *= ALONG_SNAKE_PREFERENCE
 			elif towards == SIDE_RIGHT:
-				decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
+				decision[SIDE_RIGHT] *= ALONG_SNAKE_PREFERENCE
 		if not right_edge and space_occupied(pos + Vector2i.UP + Vector2i.RIGHT):
 			# up right blocked
-			decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
+			decision[SIDE_RIGHT] *= ALONG_SNAKE_PREFERENCE
 
 	if not bottom_edge:
 		# away from bottom edge
 		if not left_edge and space_occupied(pos + Vector2i.DOWN + Vector2i.LEFT):
 			# down left blocked
-			decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
+			decision[SIDE_LEFT] *= ALONG_SNAKE_PREFERENCE
 		if space_occupied(pos + Vector2i.DOWN):
 			# down blocked
 			decision[SIDE_BOTTOM] = 0.0
 			if towards == SIDE_LEFT:
-				decision[SIDE_LEFT] *= FOLLOW_PREFERENCE
+				decision[SIDE_LEFT] *= ALONG_SNAKE_PREFERENCE
 			elif towards == SIDE_RIGHT:
-				decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
+				decision[SIDE_RIGHT] *= ALONG_SNAKE_PREFERENCE
 		if not right_edge and space_occupied(pos + Vector2i.DOWN + Vector2i.RIGHT):
 			# down right blocked
-			decision[SIDE_RIGHT] *= FOLLOW_PREFERENCE
+			decision[SIDE_RIGHT] *= ALONG_SNAKE_PREFERENCE
 
 	if not left_edge:
 		# away from left edge
 		if not top_edge and space_occupied(pos + Vector2i.UP + Vector2i.LEFT):
 			# up left blocked
-			decision[SIDE_TOP] *= FOLLOW_PREFERENCE
+			decision[SIDE_TOP] *= ALONG_SNAKE_PREFERENCE
 		if space_occupied(pos + Vector2i.LEFT):
 			# left blocked
 			decision[SIDE_LEFT] = 0.0
 			if towards == SIDE_TOP:
-				decision[SIDE_TOP] *= FOLLOW_PREFERENCE
+				decision[SIDE_TOP] *= ALONG_SNAKE_PREFERENCE
 			elif towards == SIDE_BOTTOM:
-				decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
+				decision[SIDE_BOTTOM] *= ALONG_SNAKE_PREFERENCE
 		if not bottom_edge and space_occupied(pos + Vector2i.DOWN + Vector2i.LEFT):
 			# down left blocked
-			decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
+			decision[SIDE_BOTTOM] *= ALONG_SNAKE_PREFERENCE
 
 	if not right_edge:
 		# away from right edge
 		if not top_edge and space_occupied(pos + Vector2i.UP + Vector2i.RIGHT):
 			# up right blocked
-			decision[SIDE_TOP] *= FOLLOW_PREFERENCE
+			decision[SIDE_TOP] *= ALONG_SNAKE_PREFERENCE
 		if space_occupied(pos + Vector2i.RIGHT):
 			# right blocked
 			decision[SIDE_RIGHT] = 0.0
 			if towards == SIDE_TOP:
-				decision[SIDE_TOP] *= FOLLOW_PREFERENCE
+				decision[SIDE_TOP] *= ALONG_SNAKE_PREFERENCE
 			elif towards == SIDE_BOTTOM:
-				decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
+				decision[SIDE_BOTTOM] *= ALONG_SNAKE_PREFERENCE
 		if not bottom_edge and space_occupied(pos + Vector2i.DOWN + Vector2i.RIGHT):
 			# down right blocked
-			decision[SIDE_BOTTOM] *= FOLLOW_PREFERENCE
+			decision[SIDE_BOTTOM] *= ALONG_SNAKE_PREFERENCE
 
 	var sum : float = decision[SIDE_TOP] + decision[SIDE_BOTTOM] + decision[SIDE_LEFT] + decision[SIDE_RIGHT]
 	if sum == 0.0:
@@ -391,6 +401,10 @@ func make_snake(pos : Vector2i,
 	do_apply_snake(index, apply_map_checked)
 	for i in initial:
 		if space_occupied(snake.pos + UPDATE_POS[towards]):
+			if i == 0:
+				# if a snake turns immediately, it can permanently block escape
+				snake.trim(1)
+				return
 			break
 		do_move_snake(index, towards, apply_map_checked)
 	for i in length - 2:
@@ -425,7 +439,7 @@ func _init(size : Vector2i,
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(x, 0),
-							   randi_range(min_length, max_length),
+							   randi_range(1, max_length),
 							   SIDE_BOTTOM,
 							   randi_range(size.y / 2, size.y - 1))
 					chance = BASE_CHANCE
@@ -434,7 +448,7 @@ func _init(size : Vector2i,
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(x, size.y - 1),
-							   randi_range(min_length, max_length),
+							   randi_range(1, max_length),
 							   SIDE_TOP,
 							   randi_range(size.y / 2, size.y - 1))
 					chance = BASE_CHANCE
@@ -444,7 +458,7 @@ func _init(size : Vector2i,
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(0, y),
-							   randi_range(min_length, max_length),
+							   randi_range(1, max_length),
 							   SIDE_RIGHT,
 							   randi_range(size.x / 2, size.x - 1))
 					chance = BASE_CHANCE
@@ -453,7 +467,7 @@ func _init(size : Vector2i,
 				empties = true
 				if randf() < chance:
 					make_snake(Vector2i(size.y - 1, y),
-							   randi_range(min_length, max_length),
+							   randi_range(1, max_length),
 							   SIDE_LEFT,
 							   randi_range(size.x / 2, size.x - 1))
 					chance = BASE_CHANCE
@@ -471,6 +485,11 @@ func _init(size : Vector2i,
 			# snakes are coming in from the edges, so point them back towards the edges
 			snakes[i].reverse()
 			do_apply_snake(i, apply_map)
+
+	for y in size.y - 1:
+		for x in size.x - 1:
+			if occupied_by[size.x * y + x] < 0:
+				occupied_by[size.x * y + x] = fly_id
 
 func apply_map_full(tile_map : TileMapLayer):
 	tile_map.clear()
