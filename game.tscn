@@ -2,9 +2,13 @@
 
 [ext_resource type="PackedScene" uid="uid://decli3x5cit4b" path="res://ArrowView.tscn" id="1_80nbo"]
 [ext_resource type="Script" uid="uid://u033pomy8yui" path="res://game.gd" id="1_fc0e3"]
-[ext_resource type="Texture2D" uid="uid://bwpn0yy51x4p" path="res://background-1.png" id="2_e2o6t"]
 [ext_resource type="Texture2D" uid="uid://d1kv6id8hlo2a" path="res://border.png" id="3_7jktm"]
+[ext_resource type="Script" uid="uid://dxj3yivvhd0pe" path="res://background.gd" id="3_eow3j"]
+[ext_resource type="Texture2D" uid="uid://75bh2w6xmk8s" path="res://background-1-overlay.png" id="4_j5wjh"]
 [ext_resource type="Shader" uid="uid://dsgpq3pakocyn" path="res://ArrowViewportBlur.gdshader" id="5_7jktm"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ryrav"]
+load_path = "res://.godot/imported/background-1.png-8b2b63900bfbc3f3889d7e953622987c.ctex"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ryrav"]
 texture = ExtResource("3_7jktm")
@@ -44,9 +48,17 @@ shader = ExtResource("5_7jktm")
 [node name="Game" type="Node2D" unique_id=314868065]
 script = ExtResource("1_fc0e3")
 
-[node name="Background" type="Sprite2D" parent="." unique_id=156453144]
-texture = ExtResource("2_e2o6t")
-centered = false
+[node name="Background" type="Polygon2D" parent="." unique_id=814819373]
+texture_repeat = 2
+texture = SubResource("CompressedTexture2D_ryrav")
+polygon = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
+uv = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
+script = ExtResource("3_eow3j")
+
+[node name="Overlay" type="Polygon2D" parent="Background" unique_id=1258046140]
+texture = ExtResource("4_j5wjh")
+polygon = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
+uv = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
 
 [node name="Border" type="TileMapLayer" parent="." unique_id=1969743279]
 tile_set = SubResource("TileSet_o8fo8")
@@ -59,7 +71,7 @@ color = Color(0, 0, 0, 0.49803922)
 [node name="Arrow Viewport Blur" type="Polygon2D" parent="." unique_id=80406106]
 material = SubResource("ShaderMaterial_o8fo8")
 position = Vector2(2, 2)
-polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
+polygon = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 
 [node name="Arrow Viewport View" type="Polygon2D" parent="." unique_id=2075876877]

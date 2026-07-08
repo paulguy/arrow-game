@@ -17,7 +17,6 @@ tile_set = ExtResource("2_shend")
 collision_enabled = false
 
 [node name="Camera2D" type="Camera2D" parent="SubViewport" unique_id=1513886717]
-anchor_mode = 0
 
 [node name="FliesViewport" type="SubViewport" parent="." unique_id=1169685375]
 disable_3d = true
@@ -30,4 +29,3 @@ visible = false
 tile_set = ExtResource("2_shend")
 
 [node name="Camera2D" type="Camera2D" parent="FliesViewport" unique_id=666667746]
-anchor_mode = 0

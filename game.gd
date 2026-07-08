@@ -35,14 +35,61 @@ const BORDER_SHADOW_R_ALT : int = 1
 @onready var arrow_view : Node2D = $"ArrowView"
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
+@onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
+@onready var arrow_viewport : Polygon2D = $"Arrow Viewport View"
+@onready var flies_viewport : Polygon2D = $"Flies Viewport View"
+@onready var background : Polygon2D = $Background
 
-var tile_size : Vector2
+var tile_size : Vector2i
 var map_size : Vector2i
 var view_pos : Vector2i = Vector2i.ZERO
 var last_drag : int = 0
+var last_size : Vector2i
 
 func update_border_pos():
-	border.position = (get_viewport_rect().size - (Vector2(map_size + Vector2i(2, 2)) * tile_size)) / 2.0 + Vector2(view_pos)
+	border.position = (last_size - ((map_size + Vector2i(2, 2)) * tile_size)) / 2 + view_pos
+
+func update_view_positions():
+	var overhangs : Vector2i = ((map_size * Vector2i(tile_size)) - last_size) / 2
+	view_pos.x = min((map_size.x * tile_size.x) - overhangs.x - (last_size.x * VIEW_OFF_RATIO), view_pos.x)
+	view_pos.x = max(-(map_size.x * tile_size.x) + overhangs.x + (last_size.x * VIEW_OFF_RATIO), view_pos.x)
+	view_pos.y = min((map_size.y * tile_size.y) - overhangs.y - (last_size.y * VIEW_OFF_RATIO), view_pos.y)
+	view_pos.y = max(-(map_size.y * tile_size.y) + overhangs.y + (last_size.y * VIEW_OFF_RATIO), view_pos.y)
+	update_border_pos()
+	arrow_view.set_view(view_pos - (map_size * tile_size / 2))
+
+func update_size(new_size : Vector2i):
+	var view_size : Vector2 = Vector2(new_size)
+	var polygon : PackedVector2Array = blur_viewport.polygon
+	polygon[1].x = view_size.x
+	polygon[2] = view_size
+	polygon[3].y = view_size.y
+	blur_viewport.polygon = polygon
+	polygon = blur_viewport.uv
+	polygon[1].x = view_size.x
+	polygon[2] = view_size
+	polygon[3].y = view_size.y
+	blur_viewport.uv = polygon
+	polygon = arrow_viewport.polygon
+	polygon[1].x = view_size.x
+	polygon[2] = view_size
+	polygon[3].y = view_size.y
+	arrow_viewport.polygon = polygon
+	polygon = arrow_viewport.uv
+	polygon[1].x = view_size.x
+	polygon[2] = view_size
+	polygon[3].y = view_size.y
+	arrow_viewport.uv = polygon
+	polygon = flies_viewport.polygon
+	polygon[1].x = view_size.x
+	polygon[2] = view_size
+	polygon[3].y = view_size.y
+	flies_viewport.polygon = polygon
+	polygon = flies_viewport.uv
+	polygon[1].x = view_size.x
+	polygon[2] = view_size
+	polygon[3].y = view_size.y
+	flies_viewport.uv = polygon
 
 func setup_map(size : Vector2i):
 	#arrow_view.set_view(border.position)
@@ -66,36 +113,42 @@ func setup_map(size : Vector2i):
 	field_bg.position = tile_size
 	field_bg.polygon = PackedVector2Array([
 		Vector2(0, 0),
-		Vector2(size.x, 0) * tile_size,
-		Vector2(size) * tile_size,
-		Vector2(0, size.y) * tile_size
+		Vector2(size.x, 0) * Vector2(tile_size),
+		Vector2(size) * Vector2(tile_size),
+		Vector2(0, size.y) * Vector2(tile_size)
 	])
 	arrow_view.make_map(size)
 	map_size = arrow_view.arrow_map.size
-	update_border_pos()
+	last_size = get_viewport_rect().size
+	# this needs to be first so the viewports are resized before this object updates cameras
+	arrow_view.update_size(last_size)
+	update_size(last_size)
+	background.update_size(last_size)
 
 func _ready():
 	tile_size = Vector2(border.tile_set.tile_size)
+	last_size = get_viewport_rect().size
 	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
-	$"Arrow Viewport Blur".texture = viewport_texture
-	$"Arrow Viewport View".texture = viewport_texture
-	$"Flies Viewport View".texture = arrow_view.get_flies_viewport_texture()
+	blur_viewport.texture = viewport_texture
+	arrow_viewport.texture = viewport_texture
+	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
 	setup_map(DEFAULT_SIZE)
+
+func _process(_delta : float):
+	var new_size : Vector2i = get_viewport_rect().size
+	if new_size != last_size:
+		arrow_view.update_size(new_size)
+		update_size(new_size)
+		background.update_size(new_size)
+		last_size = new_size
+	update_view_positions()
 
 func _input(e : InputEvent):
 	if Time.get_ticks_msec() - last_drag > DRAG_DELAY_MS and e is InputEventMouseButton:
 		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
 		if not mouse_e.pressed and mouse_e.button_index == MOUSE_BUTTON_LEFT:
-			arrow_view.click_snake(get_global_mouse_position() - border.position - tile_size)
+			arrow_view.click_snake(get_global_mouse_position() - border.position - Vector2(tile_size))
 	elif e is InputEventScreenDrag:
 		var drag_e : InputEventScreenDrag = e as InputEventScreenDrag
 		view_pos += Vector2i(drag_e.relative)
-		var view_size : Vector2i = get_viewport_rect().size
-		var overhangs : Vector2i = ((map_size * Vector2i(tile_size)) - view_size) / 2
-		view_pos.x = min((map_size.x * tile_size.x) - overhangs.x - (view_size.x * VIEW_OFF_RATIO), view_pos.x)
-		view_pos.x = max(-(map_size.x * tile_size.x) + overhangs.x + (view_size.x * VIEW_OFF_RATIO), view_pos.x)
-		view_pos.y = min((map_size.y * tile_size.y) - overhangs.y - (view_size.y * VIEW_OFF_RATIO), view_pos.y)
-		view_pos.y = max(-(map_size.y * tile_size.y) + overhangs.y + (view_size.y * VIEW_OFF_RATIO), view_pos.y)
-		update_border_pos()
-		arrow_view.set_view(view_pos)
 		last_drag = Time.get_ticks_msec()

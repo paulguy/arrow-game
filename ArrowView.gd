@@ -1,7 +1,11 @@
 extends Node2D
 
+# how many tries to find flies each cycle based on puzzle size
 const FLY_CHANCE : float = 0.01
+# how slow a frame needs to take relative to physics ticks before skipping adding flies
 const SLOW_RATIO : float = 1.1
+# max time of a physics tick to take to scan for flies
+const FLY_SCAN_RATIO : float = 0.2
 
 @onready var tile_map : TileMapLayer = $"SubViewport/ArrowTileMap"
 @onready var coll_tile_map : TileMapLayer = $"FliesViewport/Arrow Collision TileMap"
@@ -22,13 +26,8 @@ var last_delta : float = 0.0
 
 func _ready():
 	tile_size = tile_map.tile_set.tile_size
-	$SubViewport.size = get_viewport_rect().size
-	$FliesViewport.size = get_viewport_rect().size
 
 func make_map(size : Vector2i):
-	tile_map.position = (get_viewport_rect().size - Vector2(size * tile_size)) / 2.0
-	coll_tile_map.position = (get_viewport_rect().size - Vector2(size * tile_size)) / 2.0
-
 	if arrow_map != null:
 		arrow_map.free()
 	arrow_map = ArrowMap.new(size, 3, 10)
@@ -130,7 +129,11 @@ func _process(delta : float):
 func _physics_process(_delta : float):
 	if last_delta < physics_delta * SLOW_RATIO:
 		# only try to make flies if it's not running slow
+		var start : float = Time.get_ticks_usec() / 1000000.0
 		for i in arrow_map.size.x * arrow_map.size.y * FLY_CHANCE:
+			# don't burn too much CPU time
+			if (Time.get_ticks_usec() / 1000000.0) - start > physics_delta * FLY_SCAN_RATIO:
+				break
 			var flypath : Array[Vector2i] = pop_random_free_fly(astar)
 			if len(flypath) > 0 and flypath[0].x >= 0 and flypath[0].y >= 0:
 				make_fly(flypath)
@@ -207,12 +210,16 @@ func _physics_process(_delta : float):
 			arrow_map.apply_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
 			arrow_map.snakes.pop_back()
 
+func update_size(view_size : Vector2i):
+	$SubViewport.size = view_size
+	$FliesViewport.size = view_size
+
+func set_view(pos : Vector2):
+	tile_map_camera.position = -pos
+	flies_camera.position = -pos
+
 func get_viewport_texture() -> ViewportTexture:
 	return $SubViewport.get_texture()
 
 func get_flies_viewport_texture() -> ViewportTexture:
 	return $FliesViewport.get_texture()
-
-func set_view(pos : Vector2):
-	tile_map_camera.position = -pos
-	flies_camera.position = -pos
