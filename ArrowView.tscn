@@ -10,7 +10,7 @@ script = ExtResource("1_shend")
 disable_3d = true
 transparent_bg = true
 handle_input_locally = false
-canvas_item_default_texture_filter = 4
+canvas_item_default_texture_filter = 0
 oversampling = false
 size = Vector2i(800, 600)
 
@@ -22,7 +22,7 @@ collision_enabled = false
 disable_3d = true
 transparent_bg = true
 handle_input_locally = false
-canvas_item_default_texture_filter = 4
+canvas_item_default_texture_filter = 0
 oversampling = false
 size = Vector2i(800, 600)
 

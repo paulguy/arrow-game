@@ -1,8 +1,9 @@
 extends Node2D
 
-const DEFAULT_SIZE : Vector2i = Vector2i(120, 120)
+const DEFAULT_SIZE : Vector2i = Vector2i(40, 40)
 const DRAG_DELAY_MS : float = 200
 const VIEW_OFF_RATIO : float = 0.8
+const ZOOM_OCTAVE_DIV : float = 12.0
 
 const BORDER_TL : Vector2i = Vector2i(0, 0)
 const BORDER_TL_ALT : int = 0
@@ -42,21 +43,23 @@ const BORDER_SHADOW_R_ALT : int = 1
 
 var tile_size : Vector2i
 var map_size : Vector2i
-var view_pos : Vector2i = Vector2i.ZERO
+var view_pos : Vector2 = Vector2.ZERO
 var view_zoom : float = 1.0
 var last_drag : int = 0
 var last_size : Vector2i
 
-func get_click_pos(screen_pos : Vector2):
+func get_view_rel_pos(screen_pos : Vector2):
 	return (screen_pos - Vector2(view_pos)) / view_zoom
 
 func update_border_pos():
 	border.scale = Vector2(view_zoom, view_zoom)
-	border.position = view_pos - Vector2i(tile_size * view_zoom)
+	# add border to view pos
+	border.position = Vector2i(view_pos) - Vector2i(tile_size * view_zoom)
 
 func update_view_positions():
 	var view_size : Vector2 = Vector2(last_size)
 	var view_off_ratio : float = VIEW_OFF_RATIO + ((1.0 - VIEW_OFF_RATIO) - (1.0 - VIEW_OFF_RATIO) / view_zoom)
+	# clamp view position to prevent going offscreen
 	view_pos.x = max(map_size.x * tile_size.x * view_zoom * -view_off_ratio, view_pos.x)
 	view_pos.x = min(view_size.x - (map_size.x * tile_size.x * view_zoom * (1.0 - view_off_ratio)), view_pos.x)
 	view_pos.y = max(map_size.y * tile_size.y * view_zoom * -view_off_ratio, view_pos.y)
@@ -98,10 +101,9 @@ func update_size():
 	polygon[3].y = view_size.y
 	flies_viewport.uv = polygon
 	background.update_size(last_size)
-	#arrow_view.update_size(last_size)
 
 func update_zoom(amount : float, pos : Vector2):
-	var cursor_pos : Vector2 = get_click_pos(pos)
+	var cursor_pos : Vector2 = get_view_rel_pos(pos)
 	view_zoom *= 2 ** amount
 	view_pos = pos - (cursor_pos * view_zoom)
 	update_view_positions()
@@ -136,9 +138,12 @@ func setup_map(size : Vector2i):
 	arrow_view.make_map(size)
 	map_size = arrow_view.arrow_map.size
 	last_size = get_viewport_rect().size
-	view_pos = (last_size - (map_size * tile_size)) / 2
-	# this needs to be first so the viewports are resized before this object updates cameras
+	# set zoom value to a sensible level to fit the puzzle on screen
+	var map_px_diff : Vector2i = last_size - (map_size * tile_size)
+	view_zoom = Vector2(last_size)[map_px_diff.min_axis_index()] / Vector2(map_size * tile_size)[map_px_diff.min_axis_index()] * VIEW_OFF_RATIO
+	view_pos = (Vector2(last_size) - (map_size * tile_size * view_zoom)) / 2
 	update_size()
+	update_view_positions()
 
 func _ready():
 	tile_size = Vector2(border.tile_set.tile_size)
@@ -152,9 +157,14 @@ func _ready():
 func _process(_delta : float):
 	var new_size : Vector2i = get_viewport_rect().size
 	if new_size != last_size:
+		# adjust pos to be in a similar place that it was
+		var last_ar : Vector2 = Vector2(last_size) / last_size[last_size.min_axis_index()]
+		var new_ar : Vector2 = Vector2(new_size) / new_size[new_size.min_axis_index()]
+		var center : Vector2 = view_pos + Vector2(map_size * tile_size * view_zoom / 2.0)
+		view_pos = (center / last_ar * new_ar) - Vector2(map_size * tile_size * view_zoom / 2.0)
 		last_size = new_size
 		update_size()
-	update_view_positions()
+		update_view_positions()
 
 func _input(e : InputEvent):
 	var zoom_rel : float = 0.0
@@ -163,11 +173,12 @@ func _input(e : InputEvent):
 	if e is InputEventScreenTouch:
 		var touch_e : InputEventScreenTouch = e as InputEventScreenTouch
 		if touch_e.pressed:
-			arrow_view.click_snake(get_click_pos(touch_e.position))
+			arrow_view.click_snake(get_view_rel_pos(touch_e.position))
 	elif e is InputEventScreenDrag:
 		var drag_e : InputEventScreenDrag = e as InputEventScreenDrag
-		view_pos += Vector2i(drag_e.relative)
+		view_pos += drag_e.relative
 		last_drag = Time.get_ticks_msec()
+		update_view_positions()
 	elif e is InputEventMouseButton:
 		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
 		zoom_pos = mouse_e.position
@@ -175,16 +186,17 @@ func _input(e : InputEvent):
 			zoom_rel = 1.0
 			if mouse_e.factor != 0.0:
 				zoom_rel = mouse_e.factor
-			zoom_rel /= 12.0
+			zoom_rel /= ZOOM_OCTAVE_DIV
 		elif mouse_e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			zoom_rel = -1.0
 			if mouse_e.factor != 0.0:
 				zoom_rel = -mouse_e.factor
-			zoom_rel /= 12.0
+			zoom_rel /= ZOOM_OCTAVE_DIV
 	elif e is InputEventMagnifyGesture:
 		var gesture_e : InputEventMagnifyGesture = e as InputEventMagnifyGesture
 		zoom_pos = gesture_e.position
 		zoom_rel = gesture_e.factor
 
 	if zoom_rel != 0.0:
-		update_zoom(zoom_rel, get_global_mouse_position())
+		update_zoom(zoom_rel, zoom_pos)
+		update_view_positions()

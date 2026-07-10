@@ -196,7 +196,6 @@ func _physics_process(_delta : float):
 		var map_size : Vector2i = arrow_map.size * tile_size
 		#var corner_tl : Vector2i = (view_size - (arrow_map.size * tile_size)) / 2 + view_pos
 		var corner_tl : Vector2i = view_pos / view_zoom
-		prints(get_viewport_rect().end, map_size, corner_tl, view_pos)
 		if (offscreen_snake.headTowards == SIDE_LEFT and \
 		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + corner_tl.x < 0) or \
 		   (offscreen_snake.headTowards == SIDE_RIGHT and \
