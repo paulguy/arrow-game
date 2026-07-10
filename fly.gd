@@ -1,3 +1,4 @@
+class_name Fly
 extends RigidBody2D
 
 const MAX_ANGLE_OFFSET : float = 0.95
@@ -22,7 +23,6 @@ func _physics_process(delta : float):
 		queue_free()
 		return
 
-	rotation = 0.0
 	var towards : float
 
 	if time > TIMEOUT:

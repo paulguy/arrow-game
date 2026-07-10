@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://dxj3yivvhd0pe" path="res://background.gd" id="3_eow3j"]
 [ext_resource type="Texture2D" uid="uid://75bh2w6xmk8s" path="res://background-1-overlay.png" id="4_j5wjh"]
 [ext_resource type="Shader" uid="uid://dsgpq3pakocyn" path="res://ArrowViewportBlur.gdshader" id="5_7jktm"]
+[ext_resource type="Texture2D" uid="uid://b1foqs316umbw" path="res://bg-grid.png" id="5_eow3j"]
 
 [sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ryrav"]
 load_path = "res://.godot/imported/background-1.png-8b2b63900bfbc3f3889d7e953622987c.ctex"
@@ -62,22 +63,28 @@ uv = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
 
 [node name="Border" type="TileMapLayer" parent="." unique_id=1969743279]
 tile_set = SubResource("TileSet_o8fo8")
+collision_enabled = false
+navigation_enabled = false
 
 [node name="Field Background" type="Polygon2D" parent="Border" unique_id=49738478]
-color = Color(0, 0, 0, 0.49803922)
+texture_repeat = 2
+texture = ExtResource("5_eow3j")
 
 [node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("1_80nbo")]
 
 [node name="Arrow Viewport Blur" type="Polygon2D" parent="." unique_id=80406106]
+texture_filter = 1
 material = SubResource("ShaderMaterial_o8fo8")
 position = Vector2(2, 2)
 polygon = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 
 [node name="Arrow Viewport View" type="Polygon2D" parent="." unique_id=2075876877]
+texture_filter = 1
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 
 [node name="Flies Viewport View" type="Polygon2D" parent="." unique_id=431061337]
+texture_filter = 1
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)

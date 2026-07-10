@@ -10,6 +10,7 @@ radius = 3.0
 collision_layer = 0
 mass = 0.01
 gravity_scale = 0.0
+lock_rotation = true
 script = ExtResource("1_qarim")
 
 [node name="Sprite" type="Sprite2D" parent="." unique_id=1811766016]

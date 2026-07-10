@@ -7,10 +7,11 @@ const SLOW_RATIO : float = 1.1
 # max time of a physics tick to take to scan for flies
 const FLY_SCAN_RATIO : float = 0.2
 
+@onready var arrows_view : SubViewport = $"SubViewport"
+@onready var flies_view : SubViewport = $"FliesViewport"
+@onready var flies_camera : Camera2D = $"FliesViewport/Camera2D"
 @onready var tile_map : TileMapLayer = $"SubViewport/ArrowTileMap"
 @onready var coll_tile_map : TileMapLayer = $"FliesViewport/Arrow Collision TileMap"
-@onready var tile_map_camera : Camera2D = $"SubViewport/Camera2D"
-@onready var flies_camera : Camera2D = $"FliesViewport/Camera2D"
 var fly_res : Resource = preload("res://fly.tscn")
 
 var arrow_map : ArrowMap
@@ -23,6 +24,9 @@ var astar : AStarGrid2D
 var tile_size : Vector2i
 var physics_delta : float = 1.0 / ProjectSettings.get_setting("physics/common/physics_ticks_per_second")
 var last_delta : float = 0.0
+var view_size : Vector2i = Vector2i.ZERO
+var view_pos : Vector2i = Vector2i.ZERO
+var view_zoom : float = 1.0
 
 func _ready():
 	tile_size = tile_map.tile_set.tile_size
@@ -120,7 +124,7 @@ func make_fly(flypath : Array[Vector2i]):
 	fly.region = Rect2(tile_size, (arrow_map.size - Vector2i.ONE) * tile_size)
 	fly.cell_size = tile_size
 	fly.position = coll_tile_map.position + Vector2(flypath[0] * tile_size)
-	$FliesViewport.add_child(fly)
+	flies_view.add_child(fly)
 
 func _process(delta : float):
 	# keep track of real frame time
@@ -189,14 +193,18 @@ func _physics_process(_delta : float):
 
 	if offscreen_snake != null:
 		# snake moving out of the map
+		var map_size : Vector2i = arrow_map.size * tile_size
+		#var corner_tl : Vector2i = (view_size - (arrow_map.size * tile_size)) / 2 + view_pos
+		var corner_tl : Vector2i = view_pos / view_zoom
+		prints(get_viewport_rect().end, map_size, corner_tl, view_pos)
 		if (offscreen_snake.headTowards == SIDE_LEFT and \
-		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + tile_map.position.x - tile_map_camera.position.x < 0) or \
+		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + corner_tl.x < 0) or \
 		   (offscreen_snake.headTowards == SIDE_RIGHT and \
-		   (offscreen_snake.pos.x - offscreen_overhang) * tile_size.x + tile_map.position.x - tile_map_camera.position.x > get_viewport_rect().end.x) or \
+		   (offscreen_snake.pos.x - offscreen_overhang) * tile_size.x + corner_tl.x > get_viewport_rect().end.x / view_zoom) or \
 		   (offscreen_snake.headTowards == SIDE_TOP and \
-		   (offscreen_snake.pos.y + offscreen_overhang) * tile_size.y + tile_map.position.y - tile_map_camera.position.y < 0) or \
+		   (offscreen_snake.pos.y + offscreen_overhang) * tile_size.y + corner_tl.y < 0) or \
 		   (offscreen_snake.headTowards == SIDE_BOTTOM and \
-		   (offscreen_snake.pos.y - offscreen_overhang) * tile_size.y + tile_map.position.y - tile_map_camera.position.y > get_viewport_rect().end.y):
+		   (offscreen_snake.pos.y - offscreen_overhang) * tile_size.y + corner_tl.y > get_viewport_rect().end.y / view_zoom):
 			# went offscreen
 			arrow_map.snakes.append(offscreen_snake)
 			arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, tile_map)
@@ -210,13 +218,18 @@ func _physics_process(_delta : float):
 			arrow_map.apply_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
 			arrow_map.snakes.pop_back()
 
-func update_size(view_size : Vector2i):
-	$SubViewport.size = view_size
-	$FliesViewport.size = view_size
+func update_size(new_size : Vector2i):
+	view_size = new_size
+	arrows_view.size = view_size
+	flies_view.size = view_size
 
-func set_view(pos : Vector2):
-	tile_map_camera.position = -pos
-	flies_camera.position = -pos
+func update_zoom_pos(zoom : float, pos : Vector2i):
+	tile_map.position = pos
+	tile_map.scale = Vector2(zoom, zoom)
+	flies_camera.position = -(pos / zoom)
+	flies_camera.zoom = Vector2(zoom, zoom)
+	view_pos = pos
+	view_zoom = zoom
 
 func get_viewport_texture() -> ViewportTexture:
 	return $SubViewport.get_texture()

@@ -2,7 +2,7 @@ extends Node2D
 
 const DEFAULT_SIZE : Vector2i = Vector2i(120, 120)
 const DRAG_DELAY_MS : float = 200
-const VIEW_OFF_RATIO : float = 0.2
+const VIEW_OFF_RATIO : float = 0.8
 
 const BORDER_TL : Vector2i = Vector2i(0, 0)
 const BORDER_TL_ALT : int = 0
@@ -43,23 +43,30 @@ const BORDER_SHADOW_R_ALT : int = 1
 var tile_size : Vector2i
 var map_size : Vector2i
 var view_pos : Vector2i = Vector2i.ZERO
+var view_zoom : float = 1.0
 var last_drag : int = 0
 var last_size : Vector2i
 
+func get_click_pos(screen_pos : Vector2):
+	return (screen_pos - Vector2(view_pos)) / view_zoom
+
 func update_border_pos():
-	border.position = (last_size - ((map_size + Vector2i(2, 2)) * tile_size)) / 2 + view_pos
+	border.scale = Vector2(view_zoom, view_zoom)
+	border.position = view_pos - Vector2i(tile_size * view_zoom)
 
 func update_view_positions():
-	var overhangs : Vector2i = ((map_size * Vector2i(tile_size)) - last_size) / 2
-	view_pos.x = min((map_size.x * tile_size.x) - overhangs.x - (last_size.x * VIEW_OFF_RATIO), view_pos.x)
-	view_pos.x = max(-(map_size.x * tile_size.x) + overhangs.x + (last_size.x * VIEW_OFF_RATIO), view_pos.x)
-	view_pos.y = min((map_size.y * tile_size.y) - overhangs.y - (last_size.y * VIEW_OFF_RATIO), view_pos.y)
-	view_pos.y = max(-(map_size.y * tile_size.y) + overhangs.y + (last_size.y * VIEW_OFF_RATIO), view_pos.y)
+	var view_size : Vector2 = Vector2(last_size)
+	var view_off_ratio : float = VIEW_OFF_RATIO + ((1.0 - VIEW_OFF_RATIO) - (1.0 - VIEW_OFF_RATIO) / view_zoom)
+	view_pos.x = max(map_size.x * tile_size.x * view_zoom * -view_off_ratio, view_pos.x)
+	view_pos.x = min(view_size.x - (map_size.x * tile_size.x * view_zoom * (1.0 - view_off_ratio)), view_pos.x)
+	view_pos.y = max(map_size.y * tile_size.y * view_zoom * -view_off_ratio, view_pos.y)
+	view_pos.y = min(view_size.y - (map_size.y * tile_size.y * view_zoom * (1.0 - view_off_ratio)), view_pos.y)
+	arrow_view.update_zoom_pos(view_zoom, view_pos)
 	update_border_pos()
-	arrow_view.set_view(view_pos - (map_size * tile_size / 2))
 
-func update_size(new_size : Vector2i):
-	var view_size : Vector2 = Vector2(new_size)
+func update_size():
+	arrow_view.update_size(last_size)
+	var view_size : Vector2 = Vector2(last_size)
 	var polygon : PackedVector2Array = blur_viewport.polygon
 	polygon[1].x = view_size.x
 	polygon[2] = view_size
@@ -90,6 +97,14 @@ func update_size(new_size : Vector2i):
 	polygon[2] = view_size
 	polygon[3].y = view_size.y
 	flies_viewport.uv = polygon
+	background.update_size(last_size)
+	#arrow_view.update_size(last_size)
+
+func update_zoom(amount : float, pos : Vector2):
+	var cursor_pos : Vector2 = get_click_pos(pos)
+	view_zoom *= 2 ** amount
+	view_pos = pos - (cursor_pos * view_zoom)
+	update_view_positions()
 
 func setup_map(size : Vector2i):
 	#arrow_view.set_view(border.position)
@@ -117,13 +132,13 @@ func setup_map(size : Vector2i):
 		Vector2(size) * Vector2(tile_size),
 		Vector2(0, size.y) * Vector2(tile_size)
 	])
+	field_bg.uv = field_bg.polygon
 	arrow_view.make_map(size)
 	map_size = arrow_view.arrow_map.size
 	last_size = get_viewport_rect().size
+	view_pos = (last_size - (map_size * tile_size)) / 2
 	# this needs to be first so the viewports are resized before this object updates cameras
-	arrow_view.update_size(last_size)
-	update_size(last_size)
-	background.update_size(last_size)
+	update_size()
 
 func _ready():
 	tile_size = Vector2(border.tile_set.tile_size)
@@ -137,18 +152,39 @@ func _ready():
 func _process(_delta : float):
 	var new_size : Vector2i = get_viewport_rect().size
 	if new_size != last_size:
-		arrow_view.update_size(new_size)
-		update_size(new_size)
-		background.update_size(new_size)
 		last_size = new_size
+		update_size()
 	update_view_positions()
 
 func _input(e : InputEvent):
-	if Time.get_ticks_msec() - last_drag > DRAG_DELAY_MS and e is InputEventMouseButton:
-		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
-		if not mouse_e.pressed and mouse_e.button_index == MOUSE_BUTTON_LEFT:
-			arrow_view.click_snake(get_global_mouse_position() - border.position - Vector2(tile_size))
+	var zoom_rel : float = 0.0
+	var zoom_pos : Vector2
+
+	if e is InputEventScreenTouch:
+		var touch_e : InputEventScreenTouch = e as InputEventScreenTouch
+		if touch_e.pressed:
+			arrow_view.click_snake(get_click_pos(touch_e.position))
 	elif e is InputEventScreenDrag:
 		var drag_e : InputEventScreenDrag = e as InputEventScreenDrag
 		view_pos += Vector2i(drag_e.relative)
 		last_drag = Time.get_ticks_msec()
+	elif e is InputEventMouseButton:
+		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
+		zoom_pos = mouse_e.position
+		if mouse_e.button_index == MOUSE_BUTTON_WHEEL_UP:
+			zoom_rel = 1.0
+			if mouse_e.factor != 0.0:
+				zoom_rel = mouse_e.factor
+			zoom_rel /= 12.0
+		elif mouse_e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom_rel = -1.0
+			if mouse_e.factor != 0.0:
+				zoom_rel = -mouse_e.factor
+			zoom_rel /= 12.0
+	elif e is InputEventMagnifyGesture:
+		var gesture_e : InputEventMagnifyGesture = e as InputEventMagnifyGesture
+		zoom_pos = gesture_e.position
+		zoom_rel = gesture_e.factor
+
+	if zoom_rel != 0.0:
+		update_zoom(zoom_rel, get_global_mouse_position())
