@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://dvd0qnnfx7vk7"]
+
+[ext_resource type="Script" uid="uid://dxj3yivvhd0pe" path="res://background.gd" id="1_i7s6n"]
+[ext_resource type="Texture2D" uid="uid://75bh2w6xmk8s" path="res://background-1-overlay.png" id="2_xehqc"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ryrav"]
+load_path = "res://.godot/imported/background-1.png-8b2b63900bfbc3f3889d7e953622987c.ctex"
+
+[node name="Background" type="Polygon2D" unique_id=1254632898]
+texture_repeat = 2
+texture = SubResource("CompressedTexture2D_ryrav")
+polygon = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
+uv = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
+script = ExtResource("1_i7s6n")
+
+[node name="Overlay" type="Polygon2D" parent="." unique_id=167870036]
+texture = ExtResource("2_xehqc")
+polygon = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
+uv = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0)
