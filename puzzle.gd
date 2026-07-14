@@ -33,17 +33,17 @@ const BORDER_SHADOW_B_ALT : int = 0
 const BORDER_SHADOW_R : Vector2i = Vector2i(1, 1)
 const BORDER_SHADOW_R_ALT : int = 1
 
-@onready var arrow_view : Node2D = $"ArrowView"
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
 @onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
 @onready var arrow_viewport : Polygon2D = $"Arrow Viewport View"
 @onready var flies_viewport : Polygon2D = $"Flies Viewport View"
 
+var arrow_view : Node2D = null
 var tile_size : Vector2i
 var map_size : Vector2i
 var view_pos : Vector2 = Vector2.ZERO
-var view_zoom : float = 1.0
+var view_zoom : float = 0.0
 var last_drag : int = 0
 var last_size : Vector2i
 var compensation : Vector2i
@@ -106,6 +106,13 @@ func update_size(new_size : Vector2i):
 	polygon[2] = view_size
 	polygon[3].y = view_size.y
 	flies_viewport.uv = polygon
+
+	if view_zoom == 0.0:
+		# set zoom value to a sensible level to fit the puzzle on screen
+		var map_px_diff : Vector2i = last_size - (map_size * tile_size)
+		view_zoom = Vector2(last_size)[map_px_diff.min_axis_index()] / Vector2(map_size * tile_size)[map_px_diff.min_axis_index()] * VIEW_OFF_RATIO
+		view_pos = (Vector2(last_size) - (map_size * tile_size * view_zoom)) / 2
+
 	update_view_positions()
 
 func update_zoom(amount : float, pos : Vector2):
@@ -116,6 +123,15 @@ func update_zoom(amount : float, pos : Vector2):
 	update_view_positions()
 
 func setup_map(size : Vector2i):
+	if arrow_view != null:
+		remove_child(arrow_view)
+	arrow_view = load("res://ArrowView.tscn").instantiate()
+	add_child(arrow_view)
+	move_child(arrow_view, border.get_index() + 1)
+	arrow_view.make_map(size)
+	map_size = arrow_view.get_map_size()
+	tile_size = arrow_view.tile_size
+
 	border.set_cell(Vector2i(0, 0), 0, BORDER_TL, BORDER_TL_ALT)
 	border.set_cell(Vector2i(size.x + 1, 0), 0, BORDER_TR, BORDER_TR_ALT)
 	border.set_cell(Vector2i(0, size.y + 1), 0, BORDER_BL, BORDER_BL_ALT)
@@ -141,16 +157,7 @@ func setup_map(size : Vector2i):
 		Vector2(0, size.y) * Vector2(tile_size)
 	])
 	field_bg.uv = field_bg.polygon
-	arrow_view.make_map(size)
-	map_size = arrow_view.arrow_map.size
-	# set zoom value to a sensible level to fit the puzzle on screen
-	var map_px_diff : Vector2i = last_size - (map_size * tile_size)
-	view_zoom = Vector2(last_size)[map_px_diff.min_axis_index()] / Vector2(map_size * tile_size)[map_px_diff.min_axis_index()] * VIEW_OFF_RATIO
-	view_pos = (Vector2(last_size) - (map_size * tile_size * view_zoom)) / 2
-	update_view_positions()
 
-func _ready():
-	tile_size = Vector2(border.tile_set.tile_size)
 	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
 	blur_viewport.texture = viewport_texture
 	arrow_viewport.texture = viewport_texture

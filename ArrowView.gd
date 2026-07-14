@@ -14,7 +14,7 @@ const FLY_SCAN_RATIO : float = 0.2
 @onready var coll_tile_map : TileMapLayer = $"FliesViewport/Arrow Collision TileMap"
 var fly_res : Resource = preload("res://fly.tscn")
 
-var arrow_map : ArrowMap
+var arrow_map : ArrowMap = null
 var last_snake : int = -1
 var active_index : int = -1
 var active_snake : Snake = null
@@ -32,8 +32,7 @@ func _ready():
 	tile_size = tile_map.tile_set.tile_size
 
 func make_map(size : Vector2i):
-	if arrow_map != null:
-		arrow_map.free()
+	# TODO: free this when this object is to be destroyed
 	arrow_map = ArrowMap.new(size, 3, 10)
 	arrow_map.apply_map_full(tile_map)
 	arrow_map.apply_map_full(coll_tile_map)
@@ -48,7 +47,6 @@ func make_map(size : Vector2i):
 	astar.fill_solid_region(Rect2i(Vector2.ZERO, size))
 
 	arrow_map.apply_astar(astar)
-	#astar.update()
 
 func set_snake_column(snake : Snake, column : int):
 	var pos : Vector2i = snake.pos
@@ -230,8 +228,11 @@ func update_zoom_pos(zoom : float, pos : Vector2i):
 	view_pos = pos
 	view_zoom = zoom
 
+func get_map_size() -> Vector2i:
+	return arrow_map.size
+
 func get_viewport_texture() -> ViewportTexture:
-	return $SubViewport.get_texture()
+	return arrows_view.get_texture()
 
 func get_flies_viewport_texture() -> ViewportTexture:
-	return $FliesViewport.get_texture()
+	return flies_view.get_texture()

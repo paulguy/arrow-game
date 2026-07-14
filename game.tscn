@@ -2,11 +2,8 @@
 
 [ext_resource type="Script" uid="uid://u033pomy8yui" path="res://game.gd" id="1_fc0e3"]
 [ext_resource type="PackedScene" uid="uid://dvd0qnnfx7vk7" path="res://background.tscn" id="2_eow3j"]
-[ext_resource type="PackedScene" uid="uid://ck38geonn6c80" path="res://puzzle.tscn" id="3_feb5d"]
 
 [node name="Game" type="Node2D" unique_id=314868065]
 script = ExtResource("1_fc0e3")
 
 [node name="Background" parent="." unique_id=1254632898 instance=ExtResource("2_eow3j")]
-
-[node name="Puzzle" parent="." unique_id=378022802 instance=ExtResource("3_feb5d")]
