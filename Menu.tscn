@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://dejvsieq2rha5"]
+
+[ext_resource type="Script" uid="uid://c8h7cj40bqjud" path="res://Menu.gd" id="1_ouk20"]
+
+[node name="Menu" type="Control" unique_id=1602390130]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ouk20")
+
+[node name="Menu Container" type="VBoxContainer" parent="." unique_id=1358110058]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="Heading Filler" type="Control" parent="Menu Container" unique_id=1770414235]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Bottom Spacer" type="Control" parent="Menu Container" unique_id=665635660]
+layout_mode = 2
