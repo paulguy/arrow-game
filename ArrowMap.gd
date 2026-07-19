@@ -453,7 +453,7 @@ func _init(size : Vector2i,
 							   randi_range(size.y / 2, size.y - 1))
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
-		for y in size.x - 1:
+		for y in size.y - 1:
 			if occupied_by[size.x * y] < 0:
 				empties = true
 				if randf() < chance:
@@ -466,7 +466,7 @@ func _init(size : Vector2i,
 			if occupied_by[size.x * y + (size.x - 1)] < 0:
 				empties = true
 				if randf() < chance:
-					make_snake(Vector2i(size.y - 1, y),
+					make_snake(Vector2i(size.x - 1, y),
 							   randi_range(1, max_length),
 							   SIDE_LEFT,
 							   randi_range(size.x / 2, size.x - 1))
