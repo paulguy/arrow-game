@@ -2,9 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bf5uhch4kaqh7" path="res://MenuSelection.gd" id="1_jdpb8"]
 [ext_resource type="Texture2D" uid="uid://dpsco8rieyu26" path="res://button-9patch.png" id="2_xx00d"]
-
-[sub_resource type="LabelSettings" id="LabelSettings_j3h60"]
-font_size = 50
+[ext_resource type="LabelSettings" uid="uid://yksyjnc5dsu5" path="res://DefaultLabel.tres" id="3_xx00d"]
 
 [node name="Menu Item" type="HBoxContainer" unique_id=189920636]
 size_flags_vertical = 3
@@ -43,7 +41,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 text = "test1"
-label_settings = SubResource("LabelSettings_j3h60")
+label_settings = ExtResource("3_xx00d")
 horizontal_alignment = 1
 vertical_alignment = 1
 

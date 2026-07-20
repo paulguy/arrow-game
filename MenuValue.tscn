@@ -2,9 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cjbgq1qdy32y0" path="res://MenuValue.gd" id="1_6krc3"]
 [ext_resource type="Texture2D" uid="uid://dpsco8rieyu26" path="res://button-9patch.png" id="2_g8k5f"]
-
-[sub_resource type="LabelSettings" id="LabelSettings_ucgtx"]
-font_size = 50
+[ext_resource type="LabelSettings" uid="uid://yksyjnc5dsu5" path="res://DefaultLabel.tres" id="3_g8k5f"]
 
 [node name="HBoxContainer" type="HBoxContainer" unique_id=1568702876]
 offset_right = 40.0
@@ -44,7 +42,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 text = "test1"
-label_settings = SubResource("LabelSettings_ucgtx")
+label_settings = ExtResource("3_g8k5f")
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -76,13 +74,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 text = "test1"
-label_settings = SubResource("LabelSettings_ucgtx")
+label_settings = ExtResource("3_g8k5f")
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Dec Container" type="MarginContainer" parent="." unique_id=85857637]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
 
 [node name="Background" type="NinePatchRect" parent="Dec Container" unique_id=229292343]
 layout_mode = 2
@@ -108,13 +107,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 text = "-"
-label_settings = SubResource("LabelSettings_ucgtx")
+label_settings = ExtResource("3_g8k5f")
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Inc Container" type="MarginContainer" parent="." unique_id=1789760562]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
 
 [node name="Background" type="NinePatchRect" parent="Inc Container" unique_id=1442340564]
 layout_mode = 2
@@ -140,7 +140,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 text = "+"
-label_settings = SubResource("LabelSettings_ucgtx")
+label_settings = ExtResource("3_g8k5f")
 horizontal_alignment = 1
 vertical_alignment = 1
 

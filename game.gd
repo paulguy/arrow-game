@@ -8,19 +8,23 @@ var puzzle_size : Vector2i = Vector2i(40, 40)
 var last_size : Vector2i = Vector2i.ZERO
 var menu : Control = null
 var puzzle : Node2D = null
+var header_label_settings : LabelSettings = load("res://DefaultLabel.tres")
 
-var MENU_MAIN : Array[MenuItemDesc] = [
+var menu_main : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(new_game_menu, "New Game"),
 	MenuSelectionDesc.new(editor, "Editor"),
 	MenuSelectionDesc.new(quit_game, "Quit Game")
 ]
 
-var MENU_NEW_GAME : Array[MenuItemDesc] = [
+var menu_new_game : Array[MenuItemDesc] = [
 	MenuValueDesc.new(puzzle_size.x, 0, MAX_SIZE.x, width_change, "Width"),
 	MenuValueDesc.new(puzzle_size.y, 0, MAX_SIZE.y, height_change, "Height"),
 	MenuSelectionDesc.new(new_game, "Start"),
 	MenuSelectionDesc.new(main_menu, "Main Menu"),
 ]
+
+# TODO: ingame menu
+# TODO: detect game end and end game menu
 
 func make_puzzle():
 	puzzle = load("res://puzzle.tscn").instantiate()
@@ -40,7 +44,7 @@ func main_menu():
 	title_control.texture = load("res://title.png")
 	title_control.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	menu.set_heading(title_control)
-	menu.set_items(MENU_MAIN)
+	menu.set_items(menu_main)
 
 func _ready():
 	last_size = get_viewport_rect().size
@@ -69,8 +73,14 @@ func quit_game():
 func new_game_menu():
 	var title_control : Label = Label.new()
 	title_control.text = "New Game"
+	title_control.label_settings = header_label_settings
+	title_control.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_control.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	menu.set_heading(title_control)
-	menu.set_items(MENU_NEW_GAME)
+	# kinda hacky
+	menu_new_game[0].init_value = puzzle_size.x
+	menu_new_game[1].init_value = puzzle_size.y
+	menu.set_items(menu_new_game)
 
 func width_change(val : int):
 	puzzle_size.x = val

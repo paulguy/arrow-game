@@ -7,6 +7,14 @@ signal menu_clicked(String)
 var menu_descs : Dictionary[MenuItem, MenuItemDesc] = {}
 var menu_items : Dictionary[Control, MenuItem] = {}
 
+func update_heading_scale():
+	# set some reasonable proportion for the heading
+	var header = container.get_child(0)
+	if header is Label:
+		header.size_flags_stretch_ratio = 1.0
+	else:
+		header.size_flags_stretch_ratio = len(menu_descs)
+
 func set_heading(c : Control):
 	var orig_c : Control = container.get_child(0)
 	container.remove_child(orig_c)
@@ -14,6 +22,7 @@ func set_heading(c : Control):
 	container.move_child(c, 0)
 	c.size_flags_vertical |= orig_c.size_flags_vertical
 	orig_c.queue_free()
+	update_heading_scale()
 
 func set_items(items : Array[MenuItemDesc]):
 	# clear any existing items
@@ -50,8 +59,7 @@ func set_items(items : Array[MenuItemDesc]):
 		menu_item.label = item.label
 		menu_descs[menu_item] = item
 
-	# set some reasonable proportion for the heading
-	container.get_child(0).size_flags_stretch_ratio = len(items)
+	update_heading_scale()
 
 func e_is_activate(e : InputEvent) -> bool:
 	if e is InputEventMouseButton and e.pressed == false:
@@ -64,6 +72,7 @@ func menu_select(e : InputEvent, c : Control):
 		var desc : MenuSelectionDesc = menu_descs[item as MenuItem]
 		desc.activate_func.call()
 
+# TODO: allow holding with inertia
 func menu_dec(e : InputEvent, c : Control):
 	if e_is_activate(e):
 		var item : MenuValue = menu_items[c]
