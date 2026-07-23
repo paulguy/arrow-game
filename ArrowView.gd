@@ -31,9 +31,12 @@ var view_zoom : float = 1.0
 func _ready():
 	tile_size = tile_map.tile_set.tile_size
 
-func make_map(size : Vector2i):
+func make_map(size : Vector2i,
+			  min_length : int,
+			  max_length : int):
 	# TODO: free this when this object is to be destroyed
-	arrow_map = ArrowMap.new(size, 3, 10)
+	arrow_map = ArrowMap.new(size)
+	arrow_map.generate(min_length, max_length)
 	arrow_map.apply_map_full(tile_map)
 	arrow_map.apply_map_full(coll_tile_map)
 

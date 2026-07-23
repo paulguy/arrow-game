@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://dx4ljldiki1g3"]
+
+[ext_resource type="Texture2D" uid="uid://dpsco8rieyu26" path="res://button-9patch.png" id="1_6d5ys"]
+[ext_resource type="LabelSettings" uid="uid://yksyjnc5dsu5" path="res://DefaultLabel.tres" id="2_cyrlu"]
+
+[node name="LabelRect" type="MarginContainer" unique_id=728411159]
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+
+[node name="Background" type="NinePatchRect" parent="." unique_id=685186790]
+layout_mode = 2
+size_flags_horizontal = 3
+texture = ExtResource("1_6d5ys")
+region_rect = Rect2(0, 0, 64, 32)
+patch_margin_left = 16
+patch_margin_top = 8
+patch_margin_right = 16
+patch_margin_bottom = 8
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[node name="Margins" type="MarginContainer" parent="." unique_id=1036754120]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 6
+
+[node name="Text" type="Label" parent="Margins" unique_id=1155317748]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+text = "test1"
+label_settings = ExtResource("2_cyrlu")
+horizontal_alignment = 1
+vertical_alignment = 1

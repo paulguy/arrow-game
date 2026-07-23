@@ -1,9 +1,10 @@
 extends Object
 class_name ArrowMap
 
+# initial chance for a snake to start generating at some space
 const BASE_CHANCE : float = 0.01
+# multiplier to increase chance to generate by each iteration
 const CHANCE_MULTIPLIER : float = 1.1
-
 # base preference for an arrow to go forward
 const FORWARD_PREFERENCE : float = 4.0
 # preference for an arrow to follow along other arrows
@@ -381,16 +382,6 @@ func move_snake_both(index : int,
 					 tile_map : TileMapLayer):
 	do_move_snake(index, towards, apply_both, tile_map)
 
-func move_snake_random(index : int) -> bool:
-	var snake : Snake = snakes[index]
-	var next : int = get_free_direction(snake.pos, snake.headTowards)
-	if next < 0:
-		return false
-	var towards : Side = next as Side
-	do_move_snake(index, towards, apply_map_checked)
-
-	return true
-
 func make_snake(pos : Vector2i,
 				length : int,
 				towards : Side,
@@ -408,8 +399,10 @@ func make_snake(pos : Vector2i,
 			break
 		do_move_snake(index, towards, apply_map_checked)
 	for i in length - 2:
-		if not move_snake_random(index):
+		var next : int = get_free_direction(snake.pos, snake.headTowards)
+		if next < 0:
 			break
+		do_move_snake(index, next as Side, apply_map_checked)
 
 	# find if the snake goes off the screen and trim it
 	var bodypos : Vector2i = snake.pos
@@ -420,15 +413,21 @@ func make_snake(pos : Vector2i,
 			snake.trim(i + 1)
 			break
 
-func _init(size : Vector2i,
-			min_length : int,
-			max_length : int):
-	self.size = size
-	occupied_by = PackedInt32Array()
-	occupied_by.resize(size.x * size.y)
-	occupied_by.fill(-1)
-	snakes = []
+func try_grow_snake(index : int):
+	var snake : Snake = snakes[index]
+	var pos : Vector2i = snake.get_tail_pos()
+	var next : int = 0
+	while next >= 0:
+		next = get_free_direction(pos, snake.nextTowards[-1])
+		if next < 0:
+			break
+		var towards : Side = next as Side
+		snake.grow(towards)
+		pos += UPDATE_POS[towards]
+		occupied_by[size.x * pos.y + pos.x] = index
 
+func generate(min_length : int,
+			  max_length : int):
 	# just access occupied_by directly here because flies aren't placed yet
 	var empties : bool = true
 	var chance : float = BASE_CHANCE
@@ -476,7 +475,6 @@ func _init(size : Vector2i,
 	# use an out of range ID for flies
 	fly_id = len(snakes) + 1
 
-	# final process the snakes
 	for i in len(snakes):
 		# delete overly short snakes
 		if len(snakes[i].nextTowards) < min_length - 1:
@@ -484,12 +482,19 @@ func _init(size : Vector2i,
 		else:
 			# snakes are coming in from the edges, so point them back towards the edges
 			snakes[i].reverse()
-			do_apply_snake(i, apply_map)
+			#try_grow_snake(i)
 
 	for y in size.y - 1:
 		for x in size.x - 1:
 			if occupied_by[size.x * y + x] < 0:
 				occupied_by[size.x * y + x] = fly_id
+
+func _init(size : Vector2i):
+	self.size = size
+	occupied_by = PackedInt32Array()
+	occupied_by.resize(size.x * size.y)
+	occupied_by.fill(-1)
+	snakes = []
 
 func apply_map_full(tile_map : TileMapLayer):
 	tile_map.clear()

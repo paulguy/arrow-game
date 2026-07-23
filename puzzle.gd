@@ -1,5 +1,7 @@
 extends Node2D
 
+signal puzzle_finished
+
 const DRAG_DELAY_MS : float = 200
 const VIEW_OFF_RATIO : float = 0.8
 const ZOOM_OCTAVE_DIV : float = 12.0
@@ -38,6 +40,8 @@ const BORDER_SHADOW_R_ALT : int = 1
 @onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
 @onready var arrow_viewport : Polygon2D = $"Arrow Viewport View"
 @onready var flies_viewport : Polygon2D = $"Flies Viewport View"
+@onready var back_button : Control = $"Back"
+@onready var shade : Polygon2D = $"Shade"
 
 var arrow_view : Node2D = null
 var tile_size : Vector2i
@@ -47,6 +51,12 @@ var view_zoom : float = 0.0
 var last_drag : int = 0
 var last_size : Vector2i
 var compensation : Vector2i
+var game_input : bool = true
+var menu : Control = null
+
+func _ready():
+	$"Back/Margins/Text".text = "Ξ"
+	back_button.modulate.a = 0.5
 
 func get_view_rel_pos(screen_pos : Vector2):
 	return (screen_pos - Vector2(view_pos)) / view_zoom
@@ -81,37 +91,22 @@ func update_size(new_size : Vector2i):
 	polygon[2] = view_size
 	polygon[3].y = view_size.y
 	blur_viewport.polygon = polygon
-	polygon = blur_viewport.uv
-	polygon[1].x = view_size.x
-	polygon[2] = view_size
-	polygon[3].y = view_size.y
 	blur_viewport.uv = polygon
-	polygon = arrow_viewport.polygon
-	polygon[1].x = view_size.x
-	polygon[2] = view_size
-	polygon[3].y = view_size.y
 	arrow_viewport.polygon = polygon
-	polygon = arrow_viewport.uv
-	polygon[1].x = view_size.x
-	polygon[2] = view_size
-	polygon[3].y = view_size.y
 	arrow_viewport.uv = polygon
-	polygon = flies_viewport.polygon
-	polygon[1].x = view_size.x
-	polygon[2] = view_size
-	polygon[3].y = view_size.y
 	flies_viewport.polygon = polygon
-	polygon = flies_viewport.uv
-	polygon[1].x = view_size.x
-	polygon[2] = view_size
-	polygon[3].y = view_size.y
 	flies_viewport.uv = polygon
+	shade.polygon = polygon
 
 	if view_zoom == 0.0:
 		# set zoom value to a sensible level to fit the puzzle on screen
 		var map_px_diff : Vector2i = last_size - (map_size * tile_size)
 		view_zoom = Vector2(last_size)[map_px_diff.min_axis_index()] / Vector2(map_size * tile_size)[map_px_diff.min_axis_index()] * VIEW_OFF_RATIO
 		view_pos = (Vector2(last_size) - (map_size * tile_size * view_zoom)) / 2
+
+	if menu != null:
+		menu.size = view_size
+		menu.update_size(view_size)
 
 	update_view_positions()
 
@@ -122,13 +117,15 @@ func update_zoom(amount : float, pos : Vector2):
 	view_pos = pos - (cursor_pos * view_zoom)
 	update_view_positions()
 
-func setup_map(size : Vector2i):
+func setup_map(size : Vector2i,
+			   min_length : int,
+			   max_length : int):
 	if arrow_view != null:
 		remove_child(arrow_view)
 	arrow_view = load("res://ArrowView.tscn").instantiate()
 	add_child(arrow_view)
 	move_child(arrow_view, border.get_index() + 1)
-	arrow_view.make_map(size)
+	arrow_view.make_map(size, min_length, max_length)
 	map_size = arrow_view.get_map_size()
 	tile_size = arrow_view.tile_size
 
@@ -164,6 +161,9 @@ func setup_map(size : Vector2i):
 	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
 
 func _input(e : InputEvent):
+	if not game_input:
+		return
+
 	var zoom_rel : float = 0.0
 	var zoom_pos : Vector2
 
@@ -197,3 +197,37 @@ func _input(e : InputEvent):
 	if zoom_rel != 0.0:
 		update_zoom(zoom_rel, zoom_pos)
 		update_view_positions()
+
+func e_is_activate(e : InputEvent) -> bool:
+	if e is InputEventScreenTouch and \
+	   e.pressed == false:
+		return true
+	return false
+
+func menu_button_event(e: InputEvent) -> void:
+	if e_is_activate(e):
+		shade.visible = true
+		back_button.visible = false
+		game_input = false
+		menu = load("res://Menu.tscn").instantiate()
+		add_child(menu)
+		menu.size = last_size
+		menu.update_size(last_size)
+		menu.set_heading("Game Menu")
+		menu.set_items(menu_ingame)
+		menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+
+func return_to_game():
+	menu.destroy()
+	game_input = true
+	back_button.visible = true
+	shade.visible = false
+
+func return_to_menu():
+	menu.destroy()
+	puzzle_finished.emit()
+
+var menu_ingame : Array[MenuItemDesc] = [
+	MenuSelectionDesc.new(return_to_game, "Return to Game"),
+	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
+]

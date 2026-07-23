@@ -1,148 +1,28 @@
 [gd_scene format=3 uid="uid://cvtqushtw42xd"]
 
 [ext_resource type="Script" uid="uid://cjbgq1qdy32y0" path="res://MenuValue.gd" id="1_6krc3"]
-[ext_resource type="Texture2D" uid="uid://dpsco8rieyu26" path="res://button-9patch.png" id="2_g8k5f"]
-[ext_resource type="LabelSettings" uid="uid://yksyjnc5dsu5" path="res://DefaultLabel.tres" id="3_g8k5f"]
+[ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="2_6krc3"]
 
 [node name="HBoxContainer" type="HBoxContainer" unique_id=1568702876]
 offset_right = 40.0
 offset_bottom = 40.0
-size_flags_vertical = 3
 script = ExtResource("1_6krc3")
 
 [node name="Left Pad" type="Control" parent="." unique_id=1284629287]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label Container" type="MarginContainer" parent="." unique_id=669383940]
+[node name="Label Container" parent="." unique_id=728411159 instance=ExtResource("2_6krc3")]
 layout_mode = 2
-size_flags_horizontal = 3
 
-[node name="Background" type="NinePatchRect" parent="Label Container" unique_id=375210147]
+[node name="Value Container" parent="." unique_id=1060619221 instance=ExtResource("2_6krc3")]
 layout_mode = 2
-size_flags_horizontal = 3
-texture = ExtResource("2_g8k5f")
-region_rect = Rect2(0, 0, 64, 32)
-patch_margin_left = 16
-patch_margin_top = 8
-patch_margin_right = 16
-patch_margin_bottom = 8
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
 
-[node name="Margins" type="MarginContainer" parent="Label Container" unique_id=865031470]
+[node name="Dec Container" parent="." unique_id=693079804 instance=ExtResource("2_6krc3")]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 8
 
-[node name="Text" type="Label" parent="Label Container/Margins" unique_id=784414471]
+[node name="Inc Container" parent="." unique_id=610831078 instance=ExtResource("2_6krc3")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 1
-text = "test1"
-label_settings = ExtResource("3_g8k5f")
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Value Container" type="MarginContainer" parent="." unique_id=50160811]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Background" type="NinePatchRect" parent="Value Container" unique_id=1033600715]
-layout_mode = 2
-size_flags_horizontal = 3
-texture = ExtResource("2_g8k5f")
-region_rect = Rect2(0, 0, 64, 32)
-patch_margin_left = 16
-patch_margin_top = 8
-patch_margin_right = 16
-patch_margin_bottom = 8
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-
-[node name="Margins" type="MarginContainer" parent="Value Container" unique_id=76127845]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 8
-
-[node name="Text" type="Label" parent="Value Container/Margins" unique_id=1193212108]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 1
-text = "test1"
-label_settings = ExtResource("3_g8k5f")
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Dec Container" type="MarginContainer" parent="." unique_id=85857637]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_default_cursor_shape = 2
-
-[node name="Background" type="NinePatchRect" parent="Dec Container" unique_id=229292343]
-layout_mode = 2
-size_flags_horizontal = 3
-texture = ExtResource("2_g8k5f")
-region_rect = Rect2(0, 0, 64, 32)
-patch_margin_left = 16
-patch_margin_top = 8
-patch_margin_right = 16
-patch_margin_bottom = 8
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-
-[node name="Margins" type="MarginContainer" parent="Dec Container" unique_id=1386133428]
-layout_mode = 2
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 8
-
-[node name="Text" type="Label" parent="Dec Container/Margins" unique_id=1054224578]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 1
-text = "-"
-label_settings = ExtResource("3_g8k5f")
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Inc Container" type="MarginContainer" parent="." unique_id=1789760562]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_default_cursor_shape = 2
-
-[node name="Background" type="NinePatchRect" parent="Inc Container" unique_id=1442340564]
-layout_mode = 2
-size_flags_horizontal = 3
-texture = ExtResource("2_g8k5f")
-region_rect = Rect2(0, 0, 64, 32)
-patch_margin_left = 16
-patch_margin_top = 8
-patch_margin_right = 16
-patch_margin_bottom = 8
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-
-[node name="Margins" type="MarginContainer" parent="Inc Container" unique_id=606577606]
-layout_mode = 2
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 8
-
-[node name="Text" type="Label" parent="Inc Container/Margins" unique_id=40427869]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 1
-text = "+"
-label_settings = ExtResource("3_g8k5f")
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="Right Pad" type="Control" parent="." unique_id=1852684779]
 layout_mode = 2

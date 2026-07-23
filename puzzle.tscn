@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://d1kv6id8hlo2a" path="res://border.png" id="2_ubegh"]
 [ext_resource type="Texture2D" uid="uid://b1foqs316umbw" path="res://bg-grid.png" id="3_mgmmf"]
 [ext_resource type="Shader" uid="uid://dsgpq3pakocyn" path="res://ArrowViewportBlur.gdshader" id="5_dcmwq"]
+[ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="5_re6l2"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ryrav"]
 texture = ExtResource("2_ubegh")
@@ -40,6 +41,9 @@ sources/0 = SubResource("TileSetAtlasSource_ryrav")
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_o8fo8"]
 shader = ExtResource("5_dcmwq")
 
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_o8fo8"]
+blend_mode = 2
+
 [node name="Puzzle" type="Node2D" unique_id=378022802]
 script = ExtResource("1_re6l2")
 
@@ -68,3 +72,15 @@ uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 texture_filter = 1
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
+
+[node name="Back" parent="." unique_id=728411159 instance=ExtResource("5_re6l2")]
+offset_right = 185.0
+offset_bottom = 81.0
+
+[node name="Shade" type="Polygon2D" parent="." unique_id=497852471]
+visible = false
+modulate = Color(1, 1, 1, 0.49803922)
+material = SubResource("CanvasItemMaterial_o8fo8")
+polygon = PackedVector2Array(0, 0, 100, 0, 100, 100, 0, 100)
+
+[connection signal="gui_input" from="Back" to="." method="menu_button_event"]

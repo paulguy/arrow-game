@@ -71,6 +71,9 @@ func move(towards : Side) -> Vector2i:
 
 	return lastPos
 
+func grow(towards : Side):
+	nextTowards.append(towards)
+
 func print_info():
 	printraw(ArrowMap.SIDE_NAME[headTowards], " ")
 	for towards in nextTowards:
