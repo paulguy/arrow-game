@@ -426,8 +426,10 @@ func try_grow_snake(index : int):
 		pos += UPDATE_POS[towards]
 		occupied_by[size.x * pos.y + pos.x] = index
 
-func generate(min_length : int,
-			  max_length : int):
+func generate_random(min_length : int,
+					 max_length : int) -> int:
+	var active_snakes : int = 0
+
 	# just access occupied_by directly here because flies aren't placed yet
 	var empties : bool = true
 	var chance : float = BASE_CHANCE
@@ -441,6 +443,7 @@ func generate(min_length : int,
 							   randi_range(1, max_length),
 							   SIDE_BOTTOM,
 							   randi_range(size.y / 2, size.y - 1))
+					active_snakes += 1
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
 			if occupied_by[size.x * (size.y - 1) + x] < 0:
@@ -450,6 +453,7 @@ func generate(min_length : int,
 							   randi_range(1, max_length),
 							   SIDE_TOP,
 							   randi_range(size.y / 2, size.y - 1))
+					active_snakes += 1
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
 		for y in size.y - 1:
@@ -460,6 +464,7 @@ func generate(min_length : int,
 							   randi_range(1, max_length),
 							   SIDE_RIGHT,
 							   randi_range(size.x / 2, size.x - 1))
+					active_snakes += 1
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
 			if occupied_by[size.x * y + (size.x - 1)] < 0:
@@ -469,6 +474,7 @@ func generate(min_length : int,
 							   randi_range(1, max_length),
 							   SIDE_LEFT,
 							   randi_range(size.x / 2, size.x - 1))
+					active_snakes += 1
 					chance = BASE_CHANCE
 			chance *= CHANCE_MULTIPLIER
 
@@ -479,6 +485,7 @@ func generate(min_length : int,
 		# delete overly short snakes
 		if len(snakes[i].nextTowards) < min_length - 1:
 			delete_snake_fly(i)
+			active_snakes -= 1
 		else:
 			# snakes are coming in from the edges, so point them back towards the edges
 			snakes[i].reverse()
@@ -488,6 +495,8 @@ func generate(min_length : int,
 		for x in size.x - 1:
 			if occupied_by[size.x * y + x] < 0:
 				occupied_by[size.x * y + x] = fly_id
+
+	return active_snakes
 
 func _init(size : Vector2i):
 	self.size = size

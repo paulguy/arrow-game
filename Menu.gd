@@ -1,7 +1,5 @@
 extends Control
 
-signal menu_clicked(String)
-
 const MAX_SEPARATION : int = 20
 const MIN_SEPARATION : int = 2
 
@@ -35,7 +33,8 @@ func _process(_delta : float):
 	var header : Control = container.get_child(0)
 	rect.y -= header.get_rect().size.y
 	if header is Label:
-		var proportion : float = float(len(menu_descs) - 1) / len(menu_descs)
+		# total items (descs + title) over space taken by everything but the title
+		var proportion : float = float(len(menu_descs)) / float(len(menu_descs) + 1)
 		screen_rect.y *= proportion
 	else:
 		screen_rect.y /= 2.0
@@ -52,6 +51,7 @@ func _process(_delta : float):
 
 	var separation : int
 	if size_seek < 0:
+		prints(rect, screen_rect)
 		if rect.x > screen_rect.x or rect.y > screen_rect.y:
 			# if any axis is larger, try to shrink
 			separation = container.get_theme_constant(&'separation')

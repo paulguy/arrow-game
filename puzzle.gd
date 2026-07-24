@@ -124,6 +124,7 @@ func setup_map(size : Vector2i,
 		remove_child(arrow_view)
 	arrow_view = load("res://ArrowView.tscn").instantiate()
 	add_child(arrow_view)
+	arrow_view.connect(&"puzzle_finished", endgame_menu)
 	move_child(arrow_view, border.get_index() + 1)
 	arrow_view.make_map(size, min_length, max_length)
 	map_size = arrow_view.get_map_size()
@@ -206,16 +207,28 @@ func e_is_activate(e : InputEvent) -> bool:
 
 func menu_button_event(e: InputEvent) -> void:
 	if e_is_activate(e):
-		shade.visible = true
-		back_button.visible = false
-		game_input = false
-		menu = load("res://Menu.tscn").instantiate()
-		add_child(menu)
-		menu.size = last_size
-		menu.update_size(last_size)
-		menu.set_heading("Game Menu")
-		menu.set_items(menu_ingame)
-		menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ingame_menu()
+
+func make_menu(title : String, items : Array[MenuItemDesc]):
+	# bit more involved because the menu is only loaded when needed
+	shade.visible = true
+	back_button.visible = false
+	game_input = false
+	menu = load("res://Menu.tscn").instantiate()
+	add_child(menu)
+	menu.size = last_size
+	menu.update_size(last_size)
+	menu.set_heading(title)
+	menu.set_items(items)
+	menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+
+func ingame_menu():
+	make_menu("Game Menu", menu_ingame)
+
+var menu_ingame : Array[MenuItemDesc] = [
+	MenuSelectionDesc.new(return_to_game, "Return to Game"),
+	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
+]
 
 func return_to_game():
 	menu.destroy()
@@ -227,7 +240,9 @@ func return_to_menu():
 	menu.destroy()
 	puzzle_finished.emit()
 
-var menu_ingame : Array[MenuItemDesc] = [
-	MenuSelectionDesc.new(return_to_game, "Return to Game"),
+func endgame_menu():
+	make_menu("Game Over", menu_endgame)
+
+var menu_endgame : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
 ]

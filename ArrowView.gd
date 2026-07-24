@@ -1,5 +1,7 @@
 extends Node2D
 
+signal puzzle_finished
+
 # how many tries to find flies each cycle based on puzzle size
 const FLY_CHANCE : float = 0.01
 # how slow a frame needs to take relative to physics ticks before skipping adding flies
@@ -27,16 +29,18 @@ var last_delta : float = 0.0
 var view_size : Vector2i = Vector2i.ZERO
 var view_pos : Vector2i = Vector2i.ZERO
 var view_zoom : float = 1.0
+var active_snakes : int
 
 func _ready():
 	tile_size = tile_map.tile_set.tile_size
+	active_snakes = 0
 
 func make_map(size : Vector2i,
 			  min_length : int,
 			  max_length : int):
 	# TODO: free this when this object is to be destroyed
 	arrow_map = ArrowMap.new(size)
-	arrow_map.generate(min_length, max_length)
+	active_snakes = arrow_map.generate_random(min_length, max_length)
 	arrow_map.apply_map_full(tile_map)
 	arrow_map.apply_map_full(coll_tile_map)
 
@@ -131,6 +135,11 @@ func _process(delta : float):
 	# keep track of real frame time
 	last_delta = delta
 
+func dec_active_and_signal():
+	active_snakes -= 1
+	if active_snakes == 0:
+		puzzle_finished.emit()
+
 func _physics_process(_delta : float):
 	if last_delta < physics_delta * SLOW_RATIO:
 		# only try to make flies if it's not running slow
@@ -165,6 +174,7 @@ func _physics_process(_delta : float):
 
 			active_snake.free()
 			active_snake = null
+			dec_active_and_signal()
 		else:
 			pos += ArrowMap.UPDATE_POS[active_snake.headTowards]
 			# check for flies and immediately release them
