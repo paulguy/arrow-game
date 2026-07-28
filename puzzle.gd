@@ -40,23 +40,50 @@ const BORDER_SHADOW_R_ALT : int = 1
 @onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
 @onready var arrow_viewport : Polygon2D = $"Arrow Viewport View"
 @onready var flies_viewport : Polygon2D = $"Flies Viewport View"
-@onready var back_button : Control = $"Back"
+@onready var back_button : Control = $"Left Menu/Back"
 @onready var shade : Polygon2D = $"Shade"
 
-var arrow_view : Node2D = null
+var arrow_view : ArrowView = null
 var tile_size : Vector2i
 var map_size : Vector2i
 var view_pos : Vector2 = Vector2.ZERO
 var view_zoom : float = 0.0
 var last_drag : int = 0
 var last_size : Vector2i
-var compensation : Vector2i
-var game_input : bool = true
+var menu_display : bool = false
 var menu : Control = null
+var play_mode : bool = true
+var editor : bool = false:
+	set(mode):
+		if mode:
+			if not editor:
+				$"Left Menu/Add".visible = true
+				$"Left Menu/Delete".visible = true
+				editor = true
+		else:
+			if editor:
+				$"Left Menu/Add".visible = false
+				$"Left Menu/Delete".visible = false
+				editor = false
 
 func _ready():
-	$"Back/Margins/Text".text = "Ξ"
-	back_button.modulate.a = 0.5
+	arrow_view = load("res://ArrowView.tscn").instantiate()
+	add_child(arrow_view)
+	move_child(arrow_view, border.get_index() + 1)
+
+	$"Left Menu/Back/Margins/Text".text = "Menu"
+	if not play_mode:
+		$"Left Menu/Back/Margins/Mode".text = "Mode"
+		$"Left Menu/Back/Margins/Mode".visible = true
+		$"Left Menu/Back/Margins/Add".text = "Add"
+		$"Left Menu/Back/Margins/Delete".text = "Delete"
+	else:
+		arrow_view.connect(&"puzzle_finished", endgame_menu)
+
+	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
+	blur_viewport.texture = viewport_texture
+	arrow_viewport.texture = viewport_texture
+	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
 
 func get_view_rel_pos(screen_pos : Vector2):
 	return (screen_pos - Vector2(view_pos)) / view_zoom
@@ -117,19 +144,8 @@ func update_zoom(amount : float, pos : Vector2):
 	view_pos = pos - (cursor_pos * view_zoom)
 	update_view_positions()
 
-func setup_map(size : Vector2i,
-			   min_length : int,
-			   max_length : int):
-	if arrow_view != null:
-		remove_child(arrow_view)
-	arrow_view = load("res://ArrowView.tscn").instantiate()
-	add_child(arrow_view)
-	arrow_view.connect(&"puzzle_finished", endgame_menu)
-	move_child(arrow_view, border.get_index() + 1)
-	arrow_view.make_map(size, min_length, max_length)
-	map_size = arrow_view.get_map_size()
-	tile_size = arrow_view.tile_size
-
+func update_border(size : Vector2i):
+	border.clear()
 	border.set_cell(Vector2i(0, 0), 0, BORDER_TL, BORDER_TL_ALT)
 	border.set_cell(Vector2i(size.x + 1, 0), 0, BORDER_TR, BORDER_TR_ALT)
 	border.set_cell(Vector2i(0, size.y + 1), 0, BORDER_BL, BORDER_BL_ALT)
@@ -156,13 +172,17 @@ func setup_map(size : Vector2i,
 	])
 	field_bg.uv = field_bg.polygon
 
-	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
-	blur_viewport.texture = viewport_texture
-	arrow_viewport.texture = viewport_texture
-	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
+func set_puzzle_size(size : Vector2i):
+	arrow_view.make_map(size)
+	map_size = arrow_view.get_map_size()
+	tile_size = arrow_view.tile_size
+	update_border(size)
+
+func generate_random(gen_params : RandGenParams):
+	arrow_view.generate_random(gen_params)
 
 func _input(e : InputEvent):
-	if not game_input:
+	if menu_display:
 		return
 
 	var zoom_rel : float = 0.0
@@ -213,7 +233,7 @@ func make_menu(title : String, items : Array[MenuItemDesc]):
 	# bit more involved because the menu is only loaded when needed
 	shade.visible = true
 	back_button.visible = false
-	game_input = false
+	menu_display = true
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
 	menu.size = last_size
@@ -232,7 +252,7 @@ var menu_ingame : Array[MenuItemDesc] = [
 
 func return_to_game():
 	menu.destroy()
-	game_input = true
+	menu_display = false
 	back_button.visible = true
 	shade.visible = false
 

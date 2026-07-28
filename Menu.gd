@@ -51,7 +51,6 @@ func _process(_delta : float):
 
 	var separation : int
 	if size_seek < 0:
-		prints(rect, screen_rect)
 		if rect.x > screen_rect.x or rect.y > screen_rect.y:
 			# if any axis is larger, try to shrink
 			separation = container.get_theme_constant(&'separation')

@@ -1,3 +1,4 @@
+class_name ArrowView
 extends Node2D
 
 signal puzzle_finished
@@ -35,25 +36,27 @@ func _ready():
 	tile_size = tile_map.tile_set.tile_size
 	active_snakes = 0
 
-func make_map(size : Vector2i,
-			  min_length : int,
-			  max_length : int):
-	# TODO: free this when this object is to be destroyed
-	arrow_map = ArrowMap.new(size)
-	active_snakes = arrow_map.generate_random(min_length, max_length)
+func finalize_map():
 	arrow_map.apply_map_full(tile_map)
 	arrow_map.apply_map_full(coll_tile_map)
 
 	astar = AStarGrid2D.new()
 	#astar.cell_size = Vector2.ONE
 	# region's size is non-inclusive of the right and bottom edges
-	astar.region = Rect2i(-Vector2i.ONE, size + Vector2i(2, 2))
+	astar.region = Rect2i(-Vector2i.ONE, arrow_map.size + Vector2i(2, 2))
 	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
 	astar.update()
 	astar.fill_solid_region(astar.region, false)
-	astar.fill_solid_region(Rect2i(Vector2.ZERO, size))
+	astar.fill_solid_region(Rect2i(Vector2.ZERO, arrow_map.size))
 
 	arrow_map.apply_astar(astar)
+
+func generate_random(gen_params : RandGenParams):
+	active_snakes = arrow_map.generate_random(gen_params)
+	finalize_map()
+
+func make_map(size : Vector2i):
+	arrow_map = ArrowMap.new(size)
 
 func set_snake_column(snake : Snake, column : int):
 	var pos : Vector2i = snake.pos
@@ -61,7 +64,7 @@ func set_snake_column(snake : Snake, column : int):
 	tile_map.set_cell(pos, 0, Vector2i(column, y))
 	coll_tile_map.set_cell(pos, 0, Vector2i(column, y))
 	for towards in snake.nextTowards:
-		pos += ArrowMap.UPDATE_POS[towards]
+		pos += Snake.UPDATE_POS[towards]
 		y = tile_map.get_cell_atlas_coords(pos).y
 		tile_map.set_cell(pos, 0, Vector2i(column, y))
 		coll_tile_map.set_cell(pos, 0, Vector2i(column, y))
@@ -109,7 +112,7 @@ func clear_fly(from : Vector2i):
 	tile_map.erase_cell(from)
 	coll_tile_map.erase_cell(from)
 
-func pop_random_free_fly(astar : AStarGrid2D) -> Array[Vector2i]:
+func pop_random_free_fly() -> Array[Vector2i]:
 	# select within borders, astar grid is from -1,-1 to size+2, size+2
 	var from : Vector2i = Vector2i(randi_range(0, astar.region.end.x - 2),
 								   randi_range(0, astar.region.end.y - 2))
@@ -148,7 +151,7 @@ func _physics_process(_delta : float):
 			# don't burn too much CPU time
 			if (Time.get_ticks_usec() / 1000000.0) - start > physics_delta * FLY_SCAN_RATIO:
 				break
-			var flypath : Array[Vector2i] = pop_random_free_fly(astar)
+			var flypath : Array[Vector2i] = pop_random_free_fly()
 			if len(flypath) > 0 and flypath[0].x >= 0 and flypath[0].y >= 0:
 				make_fly(flypath)
 
@@ -176,7 +179,7 @@ func _physics_process(_delta : float):
 			active_snake = null
 			dec_active_and_signal()
 		else:
-			pos += ArrowMap.UPDATE_POS[active_snake.headTowards]
+			pos += Snake.UPDATE_POS[active_snake.headTowards]
 			# check for flies and immediately release them
 			if tile_map.get_cell_atlas_coords(pos).y == ArrowMap.ArrowCell.FLY:
 				clear_fly(pos)
@@ -187,7 +190,7 @@ func _physics_process(_delta : float):
 
 			# check if the space is empty or will be empty when the snake moves
 			if arrow_map.occupied_by[arrow_map.size.x * pos.y + pos.x] < 0 or \
-			   pos == arrow_map.snakes[active_index].get_tail_pos():
+			   pos == arrow_map.snakes[active_index].get_pos():
 				# moving
 				arrow_map.move_snake_both(active_index, active_snake.headTowards, tile_map)
 				arrow_map.apply_snake_both(active_index, coll_tile_map)
@@ -204,8 +207,6 @@ func _physics_process(_delta : float):
 
 	if offscreen_snake != null:
 		# snake moving out of the map
-		var map_size : Vector2i = arrow_map.size * tile_size
-		#var corner_tl : Vector2i = (view_size - (arrow_map.size * tile_size)) / 2 + view_pos
 		var corner_tl : Vector2i = view_pos / view_zoom
 		if (offscreen_snake.headTowards == SIDE_LEFT and \
 		   (offscreen_snake.pos.x + offscreen_overhang) * tile_size.x + corner_tl.x < 0) or \

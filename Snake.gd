@@ -5,6 +5,20 @@ var pos : Vector2i
 var nextTowards : Array[Side]
 var headTowards : Side
 
+const UPDATE_POS : Dictionary[Side, Vector2i] = {
+	SIDE_TOP: Vector2i.UP,
+	SIDE_BOTTOM: Vector2i.DOWN,
+	SIDE_LEFT: Vector2i.LEFT,
+	SIDE_RIGHT: Vector2i.RIGHT
+}
+
+const OPPOSITE_SIDE : Dictionary[Side, Side] = {
+	SIDE_TOP: SIDE_BOTTOM,
+	SIDE_BOTTOM: SIDE_TOP,
+	SIDE_LEFT: SIDE_RIGHT,
+	SIDE_RIGHT: SIDE_LEFT
+}
+
 func _init(pos : Vector2i, length : int, towards : Side):
 	self.pos = pos
 	self.headTowards = towards
@@ -12,33 +26,17 @@ func _init(pos : Vector2i, length : int, towards : Side):
 	if length > 1:
 		nextTowards.resize(length - 1)
 	# grow away from head
-	match towards:
-		SIDE_TOP:
-			nextTowards.fill(SIDE_BOTTOM)
-		SIDE_BOTTOM:
-			nextTowards.fill(SIDE_TOP)
-		SIDE_LEFT:
-			nextTowards.fill(SIDE_RIGHT)
-		SIDE_RIGHT:
-			nextTowards.fill(SIDE_LEFT)
+	nextTowards.fill(OPPOSITE_SIDE[towards])
 
-func get_tail_pos() -> Vector2i:
+func get_pos(idx : int = TYPE_MAX) -> Vector2i:
 	var lastPos : Vector2i = pos
-	for t in nextTowards:
-		match t:
-			SIDE_TOP:
-				lastPos.y -= 1
-			SIDE_BOTTOM:
-				lastPos.y += 1
-			SIDE_LEFT:
-				lastPos.x -= 1
-			SIDE_RIGHT:
-				lastPos.x += 1
+	for t in min(idx, len(nextTowards)):
+		lastPos += UPDATE_POS[nextTowards[t]]
 
 	return lastPos
 
 func move(towards : Side) -> Vector2i:
-	var lastPos : Vector2i = get_tail_pos()
+	var lastPos : Vector2i = get_pos()
 	if len(nextTowards) > 0:
 		# pop the tail direction
 		nextTowards.pop_back()
@@ -74,6 +72,9 @@ func move(towards : Side) -> Vector2i:
 func grow(towards : Side):
 	nextTowards.append(towards)
 
+func trim(length : int):
+	nextTowards.resize(length - 1)
+
 func print_info():
 	printraw(ArrowMap.SIDE_NAME[headTowards], " ")
 	for towards in nextTowards:
@@ -82,18 +83,33 @@ func print_info():
 
 func reverse():
 	if len(nextTowards) == 0:
-		headTowards = ArrowMap.OPPOSITE_SIDE[headTowards]
+		headTowards = OPPOSITE_SIDE[headTowards]
 	else:
-		pos = get_tail_pos()
+		pos = get_pos()
 		headTowards = nextTowards[-1]
 		nextTowards.reverse()
 		for i in len(nextTowards):
-			nextTowards[i] = ArrowMap.OPPOSITE_SIDE[nextTowards[i]]
+			nextTowards[i] = OPPOSITE_SIDE[nextTowards[i]]
 
 func copy() -> Snake:
 	var snake : Snake = Snake.new(pos, 0, headTowards)
 	snake.nextTowards.assign(nextTowards)
 	return snake
 
-func trim(length : int):
-	nextTowards.resize(length - 1)
+func slice(start : int, end : int) -> Snake:
+	var newsnake : Snake
+
+	if end == -1:
+		end = len(nextTowards) + 1
+	var start_pos : Vector2i = get_pos(start)
+	var towards : Side = headTowards
+	if start > 0:
+		towards = OPPOSITE_SIDE[nextTowards[start]]
+		newsnake = Snake.new(start_pos, end - start, towards)
+		for i in end - start:
+			newsnake.nextTowards[i] = nextTowards[start + i]
+	else:
+		newsnake = Snake.new(start_pos, end, towards)
+		for i in end - 1:
+			newsnake.nextTowards[i] = nextTowards[start + i]
+	return newsnake
