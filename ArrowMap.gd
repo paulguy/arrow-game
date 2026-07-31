@@ -394,15 +394,21 @@ func trim_snake_to_fit(index : int, bounds : Vector2i):
 			if first == -1:
 				first = i
 
+func add_snake(pos : Vector2i,
+			   length : int,
+			   towards : Side) -> int:
+	var snake : Snake = Snake.new(pos, length, towards)
+	snakes.append(snake)
+	do_apply_snake(len(snakes) - 1, apply_map_checked)
+	return len(snakes) - 1
+
 func make_snake(pos : Vector2i,
 				length : int,
 				towards : Side,
 				initial : int,
 				gen_params : RandGenParams):
-	var snake : Snake = Snake.new(pos, length, towards)
-	snakes.append(snake)
-	var index : int = len(snakes) - 1
-	do_apply_snake(index, apply_map_checked)
+	var index : int = add_snake(pos, length, towards)
+	var snake : Snake = snakes[index]
 	for i in initial:
 		if space_occupied(snake.pos + Snake.UPDATE_POS[towards]):
 			if i == 0:
@@ -491,12 +497,15 @@ func generate_random(gen_params : RandGenParams) -> int:
 
 	return active_snakes
 
-func _init(size : Vector2i):
-	self.size = size
+func clear():
 	occupied_by = PackedInt32Array()
 	occupied_by.resize(size.x * size.y)
 	occupied_by.fill(UNOCCUPIED_ID)
 	snakes = []
+
+func _init(size : Vector2i):
+	self.size = size
+	clear()
 
 func resize_puzzle(new_size : Vector2i):
 	# fit snakes to new size
@@ -546,3 +555,18 @@ func select_snake(pos : Vector2i) -> int:
 	   not space_occupied(pos):
 		return -1
 	return occupied_by[size.x * pos.y + pos.x]
+
+func get_snakes() -> Array[Snake]:
+	var newsnakes : Array[Snake] = []
+	for snake in snakes:
+		if snake != DEAD_SNAKE:
+			# deep copy the whole array
+			newsnakes.append(snake.copy())
+
+	return newsnakes
+
+func set_snakes(newsnakes : Array[Snake]):
+	clear()
+	snakes = newsnakes
+	for index in len(snakes):
+		do_apply_snake(index, apply_map_checked)

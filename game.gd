@@ -18,11 +18,13 @@ func make_menu():
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
 
-func make_puzzle():
+func make_puzzle(editor : bool):
 	puzzle = load("res://puzzle.tscn").instantiate()
+	puzzle.play_mode = not editor
 	add_child(puzzle)
 	puzzle.set_puzzle_size(puzzle_size)
-	puzzle.generate_random(gen_params)
+	# puzzle size needs to have been set
+	puzzle.editor = editor
 	puzzle.update_size(last_size)
 	puzzle.connect(&"puzzle_finished", puzzle_finished)
 
@@ -72,7 +74,8 @@ func new_game():
 	gen_params.along_edge_pref_den = menu_advanced[11].value
 	gen_params.update_floats()
 	menu.destroy()
-	make_puzzle()
+	make_puzzle(false)
+	puzzle.generate_random(gen_params)
 
 var menu_main : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(new_game_menu, "New Game"),
@@ -81,14 +84,8 @@ var menu_main : Array[MenuItemDesc] = [
 ]
 
 func editor():
-	puzzle = load("res://puzzle.tscn").instantiate()
-	puzzle.play_mode = false
-	add_child(puzzle)
-	# the node tree needs to exist to set this to true
-	puzzle.editor = true
-	puzzle.set_puzzle_size(puzzle_size)
-	puzzle.update_size(last_size)
-	puzzle.connect(&"puzzle_finished", puzzle_finished)
+	menu.destroy()
+	make_puzzle(true)
 
 func quit_game():
 	get_tree().quit()

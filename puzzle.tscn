@@ -83,18 +83,22 @@ layout_mode = 2
 
 [node name="Mode" parent="Left Menu" unique_id=2141985092 instance=ExtResource("5_re6l2")]
 visible = false
+modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
 [node name="Add" parent="Left Menu" unique_id=1328724617 instance=ExtResource("5_re6l2")]
 visible = false
+modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
 [node name="Delete" parent="Left Menu" unique_id=1452871784 instance=ExtResource("5_re6l2")]
 visible = false
+modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
 [node name="Split" parent="Left Menu" unique_id=1811260475 instance=ExtResource("5_re6l2")]
 visible = false
+modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
 [node name="Right Menu" type="VBoxContainer" parent="." unique_id=1534919062]
@@ -108,4 +112,8 @@ modulate = Color(1, 1, 1, 0.49803922)
 material = SubResource("CanvasItemMaterial_o8fo8")
 polygon = PackedVector2Array(0, 0, 100, 0, 100, 100, 0, 100)
 
-[connection signal="gui_input" from="Left Menu/Back" to="." method="menu_button_event"]
+[connection signal="gui_input" from="Left Menu/Back" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Left Menu/Mode" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Left Menu/Add" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Left Menu/Delete" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Left Menu/Split" to="." method="menu_button_event" flags=18]

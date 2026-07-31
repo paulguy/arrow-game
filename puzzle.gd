@@ -7,6 +7,8 @@ const VIEW_OFF_RATIO : float = 0.8
 const ZOOM_OCTAVE_DIV : float = 12.0
 const ZOOM_MIN : float = 1.0/8.0
 
+const BUTTON_SHADE_ALPHA : float = 0.5
+
 const BORDER_TL : Vector2i = Vector2i(0, 0)
 const BORDER_TL_ALT : int = 0
 const BORDER_TR : Vector2i = Vector2i(1, 0)
@@ -40,7 +42,7 @@ const BORDER_SHADOW_R_ALT : int = 1
 @onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
 @onready var arrow_viewport : Polygon2D = $"Arrow Viewport View"
 @onready var flies_viewport : Polygon2D = $"Flies Viewport View"
-@onready var back_button : Control = $"Left Menu/Back"
+@onready var left_menu : Control = $"Left Menu"
 @onready var shade : Polygon2D = $"Shade"
 
 var arrow_view : ArrowView = null
@@ -52,19 +54,36 @@ var last_drag : int = 0
 var last_size : Vector2i
 var menu_display : bool = false
 var menu : Control = null
+var backup_snakes : Array[Snake]
+# whether this was started from a new game or the editor option
 var play_mode : bool = true
+# whether the editor should display (or test mode)
 var editor : bool = false:
 	set(mode):
 		if mode:
 			if not editor:
+				# restore the list of snakes
+				arrow_view.set_snakes(backup_snakes)
 				$"Left Menu/Add".visible = true
 				$"Left Menu/Delete".visible = true
-				editor = true
+				$"Left Menu/Split".visible = true
 		else:
 			if editor:
+				# backup the list of snakes
+				backup_snakes = arrow_view.get_snakes()
+				# update the collisions for flies
+				arrow_view.update_astar()
 				$"Left Menu/Add".visible = false
 				$"Left Menu/Delete".visible = false
-				editor = false
+				$"Left Menu/Split".visible = false
+		editor = mode
+var adding : bool = false:
+	set(val):
+		if val:
+			$"Left Menu/Add".modulate.a = 1.0
+		else:
+			$"Left Menu/Add".modulate.a = BUTTON_SHADE_ALPHA
+		adding = val
 
 func _ready():
 	arrow_view = load("res://ArrowView.tscn").instantiate()
@@ -73,17 +92,30 @@ func _ready():
 
 	$"Left Menu/Back/Margins/Text".text = "Menu"
 	if not play_mode:
-		$"Left Menu/Back/Margins/Mode".text = "Mode"
-		$"Left Menu/Back/Margins/Mode".visible = true
-		$"Left Menu/Back/Margins/Add".text = "Add"
-		$"Left Menu/Back/Margins/Delete".text = "Delete"
-	else:
-		arrow_view.connect(&"puzzle_finished", endgame_menu)
+		# in edit mode, make edit items visible
+		$"Left Menu/Mode/Margins/Text".text = "Mode"
+		$"Left Menu/Mode".visible = true
+		$"Left Menu/Mode".modulate.a = BUTTON_SHADE_ALPHA
+		$"Left Menu/Add/Margins/Text".text = "Add"
+		$"Left Menu/Add".visible = true
+		$"Left Menu/Add".modulate.a = BUTTON_SHADE_ALPHA
+		$"Left Menu/Delete/Margins/Text".text = "Delete"
+		$"Left Menu/Delete".visible = true
+		$"Left Menu/Delete".modulate.a = BUTTON_SHADE_ALPHA
+		$"Left Menu/Split/Margins/Text".text = "Split"
+		$"Left Menu/Split".visible = true
+		$"Left Menu/Split".modulate.a = BUTTON_SHADE_ALPHA
 
 	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
 	blur_viewport.texture = viewport_texture
 	arrow_viewport.texture = viewport_texture
 	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
+
+	arrow_view.connect(&"puzzle_finished", endgame_menu)
+
+func _physics_process(_delta : float):
+	if not editor:
+		arrow_view.step()
 
 func get_view_rel_pos(screen_pos : Vector2):
 	return (screen_pos - Vector2(view_pos)) / view_zoom
@@ -191,7 +223,24 @@ func _input(e : InputEvent):
 	if e is InputEventScreenTouch:
 		var touch_e : InputEventScreenTouch = e as InputEventScreenTouch
 		if touch_e.pressed:
-			arrow_view.click_snake(get_view_rel_pos(touch_e.position))
+			var snake_idx : int
+			snake_idx = arrow_view.pick_snake(get_view_rel_pos(touch_e.position))
+			if editor:
+				if adding:
+					if snake_idx < 0:
+						# only add a snake if no snake was there
+						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position)) / tile_size
+						# point it towards the outside
+						var towards : Side = arrow_view.get_side(pos)
+						arrow_view.add_snake(pos, 1, towards)
+						adding = false
+				else:
+					arrow_view.select_snake(snake_idx)
+			else:
+				if arrow_view.last_snake >= 0 and snake_idx == arrow_view.last_snake:
+					arrow_view.activate_snake()
+				else:
+					arrow_view.select_snake(snake_idx)
 	elif e is InputEventScreenDrag:
 		var drag_e : InputEventScreenDrag = e as InputEventScreenDrag
 		view_pos += drag_e.relative
@@ -225,14 +274,22 @@ func e_is_activate(e : InputEvent) -> bool:
 		return true
 	return false
 
-func menu_button_event(e: InputEvent) -> void:
+func menu_button_event(e : InputEvent, c : Control) -> void:
 	if e_is_activate(e):
-		ingame_menu()
+		for item in left_menu.get_children():
+			if c == item:
+				match c.name:
+					"Back":
+						ingame_menu()
+					"Mode":
+						editor = not editor
+					"Add":
+						adding = true
 
 func make_menu(title : String, items : Array[MenuItemDesc]):
 	# bit more involved because the menu is only loaded when needed
 	shade.visible = true
-	back_button.visible = false
+	left_menu.visible = false
 	menu_display = true
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
@@ -253,12 +310,18 @@ var menu_ingame : Array[MenuItemDesc] = [
 func return_to_game():
 	menu.destroy()
 	menu_display = false
-	back_button.visible = true
+	left_menu.visible = true
 	shade.visible = false
 
 func return_to_menu():
 	menu.destroy()
 	puzzle_finished.emit()
+
+func puzzle_clear():
+	if play_mode:
+		endgame_menu()
+	else:
+		editor = true
 
 func endgame_menu():
 	make_menu("Game Over", menu_endgame)

@@ -23,7 +23,7 @@ var active_index : int = -1
 var active_snake : Snake = null
 var offscreen_snake : Snake = null
 var offscreen_overhang : int
-var astar : AStarGrid2D
+var astar : AStarGrid2D = AStarGrid2D.new()
 var tile_size : Vector2i
 var physics_delta : float = 1.0 / ProjectSettings.get_setting("physics/common/physics_ticks_per_second")
 var last_delta : float = 0.0
@@ -36,24 +36,20 @@ func _ready():
 	tile_size = tile_map.tile_set.tile_size
 	active_snakes = 0
 
-func finalize_map():
-	arrow_map.apply_map_full(tile_map)
-	arrow_map.apply_map_full(coll_tile_map)
-
-	astar = AStarGrid2D.new()
-	#astar.cell_size = Vector2.ONE
+func update_astar():
 	# region's size is non-inclusive of the right and bottom edges
 	astar.region = Rect2i(-Vector2i.ONE, arrow_map.size + Vector2i(2, 2))
 	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
 	astar.update()
 	astar.fill_solid_region(astar.region, false)
 	astar.fill_solid_region(Rect2i(Vector2.ZERO, arrow_map.size))
-
 	arrow_map.apply_astar(astar)
 
 func generate_random(gen_params : RandGenParams):
 	active_snakes = arrow_map.generate_random(gen_params)
-	finalize_map()
+	arrow_map.apply_map_full(tile_map)
+	arrow_map.apply_map_full(coll_tile_map)
+	update_astar()
 
 func make_map(size : Vector2i):
 	arrow_map = ArrowMap.new(size)
@@ -69,39 +65,72 @@ func set_snake_column(snake : Snake, column : int):
 		tile_map.set_cell(pos, 0, Vector2i(column, y))
 		coll_tile_map.set_cell(pos, 0, Vector2i(column, y))
 
-func click_snake(pos : Vector2):
+func pick_snake(pos : Vector2) -> int:
+	return arrow_map.select_snake(pos / Vector2(tile_size))
+
+func select_snake(snake_idx : int):
+	if last_snake >= 0:
+		# if there's a last selected snake, deselect it
+		set_snake_column(arrow_map.snakes[last_snake], 0)
+	if snake_idx >= 0:
+		# if there's a valid selected snake, select it
+		set_snake_column(arrow_map.snakes[snake_idx], 1)
+	# always reset last snake
+	last_snake = snake_idx
+
+func activate_snake():
 	if active_snake == null and \
 	   offscreen_snake == null:
-		var snake_idx : int = arrow_map.select_snake(pos / Vector2(tile_size))
-		if snake_idx >= 0:
-			if snake_idx == last_snake:
-				# starting
-				active_index = snake_idx
-				active_snake = arrow_map.snakes[active_index].copy()
-				set_snake_column(active_snake, 0)
-				last_snake = -1
-			else:
-				if last_snake >= 0:
-					set_snake_column(arrow_map.snakes[last_snake], 0)
-				set_snake_column(arrow_map.snakes[snake_idx], 1)
-				last_snake = snake_idx
+		# starting
+		active_index = last_snake
+		active_snake = arrow_map.snakes[active_index].copy()
+		set_snake_column(active_snake, 0)
+		last_snake = -1
+
+func add_snake(pos : Vector2i,
+			   length : int,
+			   towards : Side):
+	var index : int = arrow_map.add_snake(pos, length, towards)
+	arrow_map.apply_snake_tilemap(index, tile_map)
+	select_snake(index)
+
+func get_snakes() -> Array[Snake]:
+	return arrow_map.get_snakes()
+
+func set_snakes(newsnakes : Array[Snake]):
+	arrow_map.set_snakes(newsnakes)
+	arrow_map.apply_map_full(tile_map)
+	arrow_map.apply_map_full(coll_tile_map)
+	active_snake = null
+	active_snakes = len(arrow_map.snakes)
+
+func get_side(pos : Vector2i) -> Side:
+	if pos.x > arrow_map.size.y - 1 - pos.y:
+		if pos.x > pos.y:
+			# right
+			return SIDE_RIGHT
+		else:
+			# bottom
+			return SIDE_BOTTOM
+	else:
+		if pos.x > pos.y:
+			# top
+			return SIDE_TOP
+		else:
+			# left
+			return SIDE_LEFT
 
 func get_fly_path(from : Vector2i) -> Array[Vector2i]:
 	var center : Vector2i = astar.region.get_center()
 	var to : Vector2i = Vector2i.ZERO
-	if from.x > arrow_map.size.y - 1 - from.y:
-		if from.x > from.y:
-			# right
+	match get_side(from):
+		SIDE_RIGHT:
 			to = Vector2i(astar.region.end.x - 1, center.y)
-		else:
-			# bottom
+		SIDE_BOTTOM:
 			to = Vector2i(center.x, astar.region.end.y - 1)
-	else:
-		if from.x > from.y:
-			# top
+		SIDE_TOP:
 			to = Vector2i(center.x, astar.region.position.y)
-		else:
-			# left
+		SIDE_LEFT:
 			to = Vector2i(astar.region.position.x, center.y)
 
 	return astar.get_id_path(from, to)
@@ -143,7 +172,7 @@ func dec_active_and_signal():
 	if active_snakes == 0:
 		puzzle_finished.emit()
 
-func _physics_process(_delta : float):
+func step():
 	if last_delta < physics_delta * SLOW_RATIO:
 		# only try to make flies if it's not running slow
 		var start : float = Time.get_ticks_usec() / 1000000.0
