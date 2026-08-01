@@ -73,38 +73,72 @@ texture_filter = 1
 polygon = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 uv = PackedVector2Array(0, 0, 800, 0, 800, 600, 0, 600)
 
-[node name="Left Menu" type="VBoxContainer" parent="." unique_id=1017222792]
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="Overlay" type="HBoxContainer" parent="." unique_id=952731742]
+offset_right = 1280.0
+offset_bottom = 720.0
 
-[node name="Back" parent="Left Menu" unique_id=728411159 instance=ExtResource("5_re6l2")]
+[node name="Menu" type="VBoxContainer" parent="Overlay" unique_id=1017222792]
+layout_mode = 2
+
+[node name="Back" parent="Overlay/Menu" unique_id=728411159 instance=ExtResource("5_re6l2")]
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Mode" parent="Left Menu" unique_id=2141985092 instance=ExtResource("5_re6l2")]
+[node name="Mode" parent="Overlay/Menu" unique_id=2141985092 instance=ExtResource("5_re6l2")]
 visible = false
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Add" parent="Left Menu" unique_id=1328724617 instance=ExtResource("5_re6l2")]
+[node name="Add" parent="Overlay/Menu" unique_id=1328724617 instance=ExtResource("5_re6l2")]
 visible = false
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Delete" parent="Left Menu" unique_id=1452871784 instance=ExtResource("5_re6l2")]
+[node name="Delete" parent="Overlay/Menu" unique_id=1452871784 instance=ExtResource("5_re6l2")]
 visible = false
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Split" parent="Left Menu" unique_id=1811260475 instance=ExtResource("5_re6l2")]
+[node name="Grow" parent="Overlay/Menu" unique_id=477519953 instance=ExtResource("5_re6l2")]
 visible = false
-modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Right Menu" type="VBoxContainer" parent="." unique_id=1534919062]
-offset_top = 85.0
-offset_right = 185.0
-offset_bottom = 85.0
+[node name="Reverse" parent="Overlay/Menu" unique_id=666884993 instance=ExtResource("5_re6l2")]
+visible = false
+layout_mode = 2
+
+[node name="Split" parent="Overlay/Menu" unique_id=1811260475 instance=ExtResource("5_re6l2")]
+visible = false
+layout_mode = 2
+
+[node name="Join" parent="Overlay/Menu" unique_id=1280080035 instance=ExtResource("5_re6l2")]
+visible = false
+layout_mode = 2
+
+[node name="D-Pad" type="MarginContainer" parent="Overlay" unique_id=323146088]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Up" parent="Overlay/D-Pad" unique_id=618444504 instance=ExtResource("5_re6l2")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 2
+
+[node name="Left" parent="Overlay/D-Pad" unique_id=415323139 instance=ExtResource("5_re6l2")]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 4
+
+[node name="Right" parent="Overlay/D-Pad" unique_id=1973637693 instance=ExtResource("5_re6l2")]
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 4
+
+[node name="Down" parent="Overlay/D-Pad" unique_id=1561647744 instance=ExtResource("5_re6l2")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
 
 [node name="Shade" type="Polygon2D" parent="." unique_id=497852471]
 visible = false
@@ -112,8 +146,17 @@ modulate = Color(1, 1, 1, 0.49803922)
 material = SubResource("CanvasItemMaterial_o8fo8")
 polygon = PackedVector2Array(0, 0, 100, 0, 100, 100, 0, 100)
 
-[connection signal="gui_input" from="Left Menu/Back" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Left Menu/Mode" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Left Menu/Add" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Left Menu/Delete" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Left Menu/Split" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay" to="." method="ui_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Back" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Mode" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Add" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Delete" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Grow" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Reverse" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Split" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Join" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/D-Pad" to="." method="ui_event" flags=18]
+[connection signal="gui_input" from="Overlay/D-Pad/Up" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/D-Pad/Left" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/D-Pad/Right" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/D-Pad/Down" to="." method="menu_button_event" flags=18]

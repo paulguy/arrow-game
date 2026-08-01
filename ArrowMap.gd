@@ -325,22 +325,11 @@ func apply_astar(astar : AStarGrid2D):
 			if not space_occupied(pos):
 				astar.set_point_solid(pos, false)
 
-func do_move_snake(index : int,
-				   towards : Side,
-				   action : Callable,
-				   action_arg = null):
-	var snake : Snake = snakes[index]
-
-	# replace head piece
-	var pos : Vector2i = snake.pos
-	if len(snake.nextTowards) > 0:
-		action.call(pos, NEXT_CELL[Vector2i(snake.headTowards, towards)], index, action_arg)
-
-	# update snake position and clear tail
-	action.call(snake.move(towards), ArrowCell.EMPTY, UNOCCUPIED_ID, action_arg)
-
-	# get new head
-	pos = snake.pos
+func place_head(pos : Vector2i,
+				index : int,
+				towards : Side,
+				action : Callable,
+				action_arg):
 	match towards:
 		SIDE_TOP:
 			action.call(pos, ArrowCell.ARROW_T, index, action_arg)
@@ -350,6 +339,29 @@ func do_move_snake(index : int,
 			action.call(pos, ArrowCell.ARROW_L, index, action_arg)
 		SIDE_RIGHT:
 			action.call(pos, ArrowCell.ARROW_R, index, action_arg)
+
+func do_move_snake(index : int,
+				   towards : Side,
+				   action : Callable,
+				   action_arg = null,
+				   grow = false):
+	var snake : Snake = snakes[index]
+
+	if len(snake.nextTowards) == 0:
+		snake.headTowards = towards
+
+	# replace head piece with body piece
+	var pos : Vector2i = snake.pos
+	if len(snake.nextTowards) > 0 or grow:
+		action.call(pos, NEXT_CELL[Vector2i(snake.headTowards, towards)], index, action_arg)
+
+	# update snake position and clear tail
+	var tailpos : Vector2i = snake.move(towards, grow)
+	if not grow:
+		action.call(tailpos, ArrowCell.EMPTY, UNOCCUPIED_ID, action_arg)
+
+	# get new head
+	place_head(snake.pos, index, towards, action, action_arg)
 
 func move_snake_map(index : int, towards : Side):
 	do_move_snake(index, towards, apply_map)
@@ -366,6 +378,46 @@ func move_snake_both(index : int,
 					 towards : Side,
 					 tile_map : TileMapLayer):
 	do_move_snake(index, towards, apply_both, tile_map)
+
+func grow_snake_both(index : int,
+					 towards : Side,
+					 tile_map : TileMapLayer):
+	do_move_snake(index, towards, apply_both, tile_map, true)
+
+func do_shrink_snake(index : int,
+					towards : Side,
+					action : Callable,
+					action_arg = null):
+	# only works correctly if the snake is moved back into itself
+	var snake : Snake = snakes[index]
+
+	# update snake position and clear head
+	action.call(snake.move(towards), ArrowCell.EMPTY, UNOCCUPIED_ID, action_arg)
+
+	# replace head
+	place_head(snake.pos, index, snake.headTowards, action, action_arg)
+
+func shrink_snake_both(index : int,
+					   towards : Side,
+					   tile_map : TileMapLayer):
+	do_shrink_snake(index, towards, apply_both, tile_map)
+
+func do_reverse_snake(index : int,
+					  action : Callable,
+					  action_arg = null):
+	var snake : Snake = snakes[index]
+	var pos : Vector2i = snake.pos
+	snake.reverse()
+	place_head(snake.pos, index, snake.headTowards, action, action_arg)
+	if len(snake.nextTowards) > 0:
+		if len(snake.nextTowards) == 1:
+			action.call(pos, NEXT_CELL[Vector2i(Snake.OPPOSITE_SIDE[snake.headTowards], snake.nextTowards[-1])], index, action_arg)
+		else:
+			action.call(pos, NEXT_CELL[Vector2i(snake.nextTowards[-2], snake.nextTowards[-1])], index, action_arg)
+
+func reverse_snake_both(index : int,
+						tile_map : TileMapLayer):
+	do_reverse_snake(index, apply_both, tile_map)
 
 func trim_snake_to_fit(index : int, bounds : Vector2i):
 	var snake : Snake = snakes[index]

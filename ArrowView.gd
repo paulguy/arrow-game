@@ -94,6 +94,41 @@ func add_snake(pos : Vector2i,
 	arrow_map.apply_snake_tilemap(index, tile_map)
 	select_snake(index)
 
+func delete_selected_snake():
+	arrow_map.delete_snake_both(last_snake, tile_map)
+	last_snake = -1
+
+func snake_blocked(snake : Snake, towards : Side) -> bool:
+	return arrow_map.space_occupied(snake.pos + Snake.UPDATE_POS[towards])
+
+func move_selected_snake(towards : Side):
+	var snake : Snake = arrow_map.snakes[last_snake]
+	if len(snake.nextTowards) > 0 and \
+	   towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
+		set_snake_column(snake, 0)
+		arrow_map.shrink_snake_both(last_snake, towards, tile_map)
+		set_snake_column(snake, 1)
+	elif not snake_blocked(snake, towards):
+		set_snake_column(snake, 0)
+		arrow_map.move_snake_both(last_snake, towards, tile_map)
+		set_snake_column(snake, 1)
+
+func grow_selected_snake(towards : Side):
+	var snake : Snake = arrow_map.snakes[last_snake]
+	if len(snake.nextTowards) > 0 and \
+	   towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
+		set_snake_column(snake, 0)
+		arrow_map.shrink_snake_both(last_snake, towards, tile_map)
+		set_snake_column(snake, 1)
+	elif not snake_blocked(snake, towards):
+		set_snake_column(snake, 0)
+		arrow_map.grow_snake_both(last_snake, towards, tile_map)
+		set_snake_column(snake, 1)
+
+func reverse_selected_snake():
+	arrow_map.reverse_snake_both(last_snake, tile_map)
+	set_snake_column(arrow_map.snakes[last_snake], 1)
+
 func get_snakes() -> Array[Snake]:
 	return arrow_map.get_snakes()
 

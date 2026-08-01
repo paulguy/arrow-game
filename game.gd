@@ -10,8 +10,8 @@ const MAX_LENGTH : int = 100
 
 var last_size : Vector2i = Vector2i.ZERO
 var menu : Control = null
+var title_logo : TextureRect = null
 var puzzle : Node2D = null
-var title_logo : TextureRect
 var gen_params : RandGenParams = RandGenParams.new()
 
 func make_menu():
@@ -32,15 +32,12 @@ func update_sizes():
 	background.update_size(last_size)
 	if menu != null:
 		menu.update_size(last_size)
+		title_logo.custom_minimum_size = Vector2(last_size.x, last_size.y / 2.0)
 	if puzzle != null:
 		puzzle.update_size(last_size)
-	title_logo.custom_minimum_size = Vector2(last_size.x, last_size.y / 2.0)
 
 func _ready():
 	last_size = get_viewport_rect().size
-	title_logo = TextureRect.new()
-	title_logo.texture = load("res://title.png")
-	title_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	make_menu()
 	main_menu()
 	update_sizes()
@@ -52,6 +49,10 @@ func _process(_delta : float):
 		update_sizes()
 
 func main_menu():
+	# logo control needs to be recreated each time for reasons
+	title_logo = TextureRect.new()
+	title_logo.texture = load("res://title.png")
+	title_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	menu.set_heading(title_logo)
 	menu.set_items(menu_main)
 
@@ -74,6 +75,7 @@ func new_game():
 	gen_params.along_edge_pref_den = menu_advanced[11].value
 	gen_params.update_floats()
 	menu.destroy()
+	title_logo.queue_free()
 	make_puzzle(false)
 	puzzle.generate_random(gen_params)
 
@@ -85,6 +87,7 @@ var menu_main : Array[MenuItemDesc] = [
 
 func editor():
 	menu.destroy()
+	title_logo.queue_free()
 	make_puzzle(true)
 
 func quit_game():

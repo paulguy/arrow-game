@@ -37,12 +37,23 @@ const BORDER_SHADOW_B_ALT : int = 0
 const BORDER_SHADOW_R : Vector2i = Vector2i(1, 1)
 const BORDER_SHADOW_R_ALT : int = 1
 
+const EDITOR_BUTTONS : Array[String] = [
+	"Add",
+	"Delete",
+	"Grow",
+	"Reverse",
+	"Split",
+	"Join"
+]
+
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
 @onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
 @onready var arrow_viewport : Polygon2D = $"Arrow Viewport View"
 @onready var flies_viewport : Polygon2D = $"Flies Viewport View"
-@onready var left_menu : Control = $"Left Menu"
+@onready var overlay : Control = $"Overlay"
+@onready var ui_menu : Control = $"Overlay/Menu"
+@onready var d_pad : Control = $"Overlay/D-Pad"
 @onready var shade : Polygon2D = $"Shade"
 
 var arrow_view : ArrowView = null
@@ -64,47 +75,57 @@ var editor : bool = false:
 			if not editor:
 				# restore the list of snakes
 				arrow_view.set_snakes(backup_snakes)
-				$"Left Menu/Add".visible = true
-				$"Left Menu/Delete".visible = true
-				$"Left Menu/Split".visible = true
+				for item in EDITOR_BUTTONS:
+					get_node(NodePath("Overlay/Menu/%s" % item)).visible = true
+				$"Overlay/D-Pad".visible = true
 		else:
 			if editor:
 				# backup the list of snakes
 				backup_snakes = arrow_view.get_snakes()
 				# update the collisions for flies
 				arrow_view.update_astar()
-				$"Left Menu/Add".visible = false
-				$"Left Menu/Delete".visible = false
-				$"Left Menu/Split".visible = false
+				for item in EDITOR_BUTTONS:
+					get_node(NodePath("Overlay/Menu/%s" % item)).visible = false
+				$"Overlay/D-Pad".visible = false
 		editor = mode
 var adding : bool = false:
 	set(val):
 		if val:
-			$"Left Menu/Add".modulate.a = 1.0
+			$"Overlay/Menu/Add".modulate.a = 1.0
 		else:
-			$"Left Menu/Add".modulate.a = BUTTON_SHADE_ALPHA
+			$"Overlay/Menu/Add".modulate.a = BUTTON_SHADE_ALPHA
 		adding = val
+var grow : bool = false:
+	set(val):
+		if val:
+			$"Overlay/Menu/Grow".modulate.a = 1.0
+		else:
+			$"Overlay/Menu/Grow".modulate.a = BUTTON_SHADE_ALPHA
+		grow = val
 
 func _ready():
 	arrow_view = load("res://ArrowView.tscn").instantiate()
 	add_child(arrow_view)
 	move_child(arrow_view, border.get_index() + 1)
 
-	$"Left Menu/Back/Margins/Text".text = "Menu"
+	$"Overlay/Menu/Back/Margins/Text".text = "Menu"
 	if not play_mode:
 		# in edit mode, make edit items visible
-		$"Left Menu/Mode/Margins/Text".text = "Mode"
-		$"Left Menu/Mode".visible = true
-		$"Left Menu/Mode".modulate.a = BUTTON_SHADE_ALPHA
-		$"Left Menu/Add/Margins/Text".text = "Add"
-		$"Left Menu/Add".visible = true
-		$"Left Menu/Add".modulate.a = BUTTON_SHADE_ALPHA
-		$"Left Menu/Delete/Margins/Text".text = "Delete"
-		$"Left Menu/Delete".visible = true
-		$"Left Menu/Delete".modulate.a = BUTTON_SHADE_ALPHA
-		$"Left Menu/Split/Margins/Text".text = "Split"
-		$"Left Menu/Split".visible = true
-		$"Left Menu/Split".modulate.a = BUTTON_SHADE_ALPHA
+		$"Overlay/Menu/Mode/Margins/Text".text = "Mode"
+		$"Overlay/Menu/Mode".visible = true
+		$"Overlay/Menu/Mode".modulate.a = BUTTON_SHADE_ALPHA
+		for item in EDITOR_BUTTONS:
+			var button : MarginContainer = get_node(NodePath("Overlay/Menu/%s" % item))
+			button.visible = true
+			button.modulate.a = BUTTON_SHADE_ALPHA
+			var label : Label = button.get_node("Margins/Text")
+			label.text = item
+		$"Overlay/D-Pad/Up/Margins/Text".text = "▲"
+		$"Overlay/D-Pad/Left/Margins/Text".text = "◀"
+		$"Overlay/D-Pad/Right/Margins/Text".text = "▶"
+		$"Overlay/D-Pad/Down/Margins/Text".text = "▼"
+		$"Overlay/D-Pad".visible = true
+		$"Overlay/D-Pad".modulate.a = BUTTON_SHADE_ALPHA
 
 	var viewport_texture : ViewportTexture = arrow_view.get_viewport_texture()
 	blur_viewport.texture = viewport_texture
@@ -167,6 +188,8 @@ func update_size(new_size : Vector2i):
 		menu.size = view_size
 		menu.update_size(view_size)
 
+	overlay.size = view_size
+
 	update_view_positions()
 
 func update_zoom(amount : float, pos : Vector2):
@@ -213,9 +236,11 @@ func set_puzzle_size(size : Vector2i):
 func generate_random(gen_params : RandGenParams):
 	arrow_view.generate_random(gen_params)
 
-func _input(e : InputEvent):
+func ui_event(e : InputEvent, c : Control):
 	if menu_display:
 		return
+
+	get_viewport().set_input_as_handled()
 
 	var zoom_rel : float = 0.0
 	var zoom_pos : Vector2
@@ -224,12 +249,12 @@ func _input(e : InputEvent):
 		var touch_e : InputEventScreenTouch = e as InputEventScreenTouch
 		if touch_e.pressed:
 			var snake_idx : int
-			snake_idx = arrow_view.pick_snake(get_view_rel_pos(touch_e.position))
+			snake_idx = arrow_view.pick_snake(get_view_rel_pos(touch_e.position + c.position))
 			if editor:
 				if adding:
 					if snake_idx < 0:
 						# only add a snake if no snake was there
-						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position)) / tile_size
+						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
 						# point it towards the outside
 						var towards : Side = arrow_view.get_side(pos)
 						arrow_view.add_snake(pos, 1, towards)
@@ -248,7 +273,7 @@ func _input(e : InputEvent):
 		update_view_positions()
 	elif e is InputEventMouseButton:
 		var mouse_e : InputEventMouseButton = e as InputEventMouseButton
-		zoom_pos = mouse_e.position
+		zoom_pos = mouse_e.position + c.position
 		if mouse_e.button_index == MOUSE_BUTTON_WHEEL_UP:
 			zoom_rel = 1.0
 			if mouse_e.factor != 0.0:
@@ -261,7 +286,7 @@ func _input(e : InputEvent):
 			zoom_rel /= ZOOM_OCTAVE_DIV
 	elif e is InputEventMagnifyGesture:
 		var gesture_e : InputEventMagnifyGesture = e as InputEventMagnifyGesture
-		zoom_pos = gesture_e.position
+		zoom_pos = gesture_e.position + c.position
 		zoom_rel = gesture_e.factor
 
 	if zoom_rel != 0.0:
@@ -275,8 +300,9 @@ func e_is_activate(e : InputEvent) -> bool:
 	return false
 
 func menu_button_event(e : InputEvent, c : Control) -> void:
+	get_viewport().set_input_as_handled()
 	if e_is_activate(e):
-		for item in left_menu.get_children():
+		for item in ui_menu.get_children():
 			if c == item:
 				match c.name:
 					"Back":
@@ -284,12 +310,41 @@ func menu_button_event(e : InputEvent, c : Control) -> void:
 					"Mode":
 						editor = not editor
 					"Add":
-						adding = true
+						adding = not adding
+					"Delete":
+						arrow_view.delete_selected_snake()
+					"Grow":
+						grow = not grow
+					"Reverse":
+						arrow_view.reverse_selected_snake()
+		for item in d_pad.get_children():
+			if c == item:
+				match c.name:
+					"Up":
+						if grow:
+							arrow_view.grow_selected_snake(SIDE_TOP)
+						else:
+							arrow_view.move_selected_snake(SIDE_TOP)
+					"Down":
+						if grow:
+							arrow_view.grow_selected_snake(SIDE_BOTTOM)
+						else:
+							arrow_view.move_selected_snake(SIDE_BOTTOM)
+					"Left":
+						if grow:
+							arrow_view.grow_selected_snake(SIDE_LEFT)
+						else:
+							arrow_view.move_selected_snake(SIDE_LEFT)
+					"Right":
+						if grow:
+							arrow_view.grow_selected_snake(SIDE_RIGHT)
+						else:
+							arrow_view.move_selected_snake(SIDE_RIGHT)
 
 func make_menu(title : String, items : Array[MenuItemDesc]):
 	# bit more involved because the menu is only loaded when needed
 	shade.visible = true
-	left_menu.visible = false
+	overlay.visible = false
 	menu_display = true
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
@@ -310,7 +365,7 @@ var menu_ingame : Array[MenuItemDesc] = [
 func return_to_game():
 	menu.destroy()
 	menu_display = false
-	left_menu.visible = true
+	overlay.visible = true
 	shade.visible = false
 
 func return_to_menu():

@@ -35,37 +35,30 @@ func get_pos(idx : int = TYPE_MAX) -> Vector2i:
 
 	return lastPos
 
-func move(towards : Side) -> Vector2i:
-	var lastPos : Vector2i = get_pos()
-	if len(nextTowards) > 0:
-		# pop the tail direction
-		nextTowards.pop_back()
-
-		match towards:
-			SIDE_TOP:
-				pos.y -= 1
-				nextTowards.push_front(SIDE_BOTTOM)
-			SIDE_BOTTOM:
-				pos.y += 1
-				nextTowards.push_front(SIDE_TOP)
-			SIDE_LEFT:
-				pos.x -= 1
-				nextTowards.push_front(SIDE_RIGHT)
-			SIDE_RIGHT:
-				pos.x += 1
-				nextTowards.push_front(SIDE_LEFT)
+func move(towards : Side, resize : bool = false) -> Vector2i:
+	var lastPos : Vector2i
+	if towards == OPPOSITE_SIDE[headTowards]:
+		lastPos = pos
+		pos += UPDATE_POS[towards]
+		if len(nextTowards) > 0:
+			nextTowards.pop_front()
+			if len(nextTowards) > 0:
+				headTowards = OPPOSITE_SIDE[nextTowards[0]]
 	else:
-		match towards:
-			SIDE_TOP:
-				pos.y -= 1
-			SIDE_BOTTOM:
-				pos.y += 1
-			SIDE_LEFT:
-				pos.x -= 1
-			SIDE_RIGHT:
-				pos.x += 1
+		lastPos = get_pos()
+		if len(nextTowards) > 0:
+			# pop the tail direction
+			if not resize:
+				nextTowards.pop_back()
 
-	headTowards = towards
+			pos += UPDATE_POS[towards]
+			nextTowards.push_front(OPPOSITE_SIDE[towards])
+		else:
+			pos += UPDATE_POS[towards]
+			if resize:
+				nextTowards.push_front(OPPOSITE_SIDE[towards])
+
+		headTowards = towards
 
 	return lastPos
 
