@@ -446,21 +446,18 @@ func trim_snake_to_fit(index : int, bounds : Vector2i):
 			if first == -1:
 				first = i
 
-func add_snake(pos : Vector2i,
-			   length : int,
-			   towards : Side) -> int:
-	var snake : Snake = Snake.new(pos, length, towards)
+func add_snake(snake : Snake) -> int:
 	snakes.append(snake)
-	do_apply_snake(len(snakes) - 1, apply_map_checked)
 	return len(snakes) - 1
 
-func make_snake(pos : Vector2i,
+func rand_snake(pos : Vector2i,
 				length : int,
 				towards : Side,
 				initial : int,
 				gen_params : RandGenParams):
-	var index : int = add_snake(pos, length, towards)
-	var snake : Snake = snakes[index]
+	var snake : Snake = Snake.new(pos, length, towards)
+	var index : int = add_snake(snake)
+	do_apply_snake(index, apply_map_checked)
 	for i in initial:
 		if space_occupied(snake.pos + Snake.UPDATE_POS[towards]):
 			if i == 0:
@@ -489,7 +486,7 @@ func generate_random(gen_params : RandGenParams) -> int:
 			if occupied_by[x] < 0:
 				empties = true
 				if randf() < chance:
-					make_snake(Vector2i(x, 0),
+					rand_snake(Vector2i(x, 0),
 							   randi_range(1, gen_params.max_length),
 							   SIDE_BOTTOM,
 							   randi_range(size.y / 2, size.y - 1),
@@ -500,7 +497,7 @@ func generate_random(gen_params : RandGenParams) -> int:
 			if occupied_by[size.x * (size.y - 1) + x] < 0:
 				empties = true
 				if randf() < chance:
-					make_snake(Vector2i(x, size.y - 1),
+					rand_snake(Vector2i(x, size.y - 1),
 							   randi_range(1, gen_params.max_length),
 							   SIDE_TOP,
 							   randi_range(size.y / 2, size.y - 1),
@@ -512,7 +509,7 @@ func generate_random(gen_params : RandGenParams) -> int:
 			if occupied_by[size.x * y] < 0:
 				empties = true
 				if randf() < chance:
-					make_snake(Vector2i(0, y),
+					rand_snake(Vector2i(0, y),
 							   randi_range(1, gen_params.max_length),
 							   SIDE_RIGHT,
 							   randi_range(size.x / 2, size.x - 1),
@@ -523,7 +520,7 @@ func generate_random(gen_params : RandGenParams) -> int:
 			if occupied_by[size.x * y + (size.x - 1)] < 0:
 				empties = true
 				if randf() < chance:
-					make_snake(Vector2i(size.x - 1, y),
+					rand_snake(Vector2i(size.x - 1, y),
 							   randi_range(1, gen_params.max_length),
 							   SIDE_LEFT,
 							   randi_range(size.x / 2, size.x - 1),

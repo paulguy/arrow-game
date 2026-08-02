@@ -90,8 +90,9 @@ func activate_snake():
 func add_snake(pos : Vector2i,
 			   length : int,
 			   towards : Side):
-	var index : int = arrow_map.add_snake(pos, length, towards)
-	arrow_map.apply_snake_tilemap(index, tile_map)
+	var snake : Snake = Snake.new(pos, length, towards)
+	var index : int = arrow_map.add_snake(snake)
+	arrow_map.apply_snake_both(index, tile_map)
 	select_snake(index)
 
 func delete_selected_snake():
@@ -128,6 +129,35 @@ func grow_selected_snake(towards : Side):
 func reverse_selected_snake():
 	arrow_map.reverse_snake_both(last_snake, tile_map)
 	set_snake_column(arrow_map.snakes[last_snake], 1)
+
+func split_selected_snake(pos : Vector2i):
+	var snake : Snake = arrow_map.snakes[last_snake]
+	var split_idx : int = snake.which_pos(pos)
+	if split_idx >= 0:
+		arrow_map.delete_snake_both(last_snake, tile_map)
+		var first : Snake
+		var second : Snake
+		if split_idx == 0:
+			first = snake.slice(0, 0)
+		else:
+			first = snake.slice(0, split_idx - 1)
+		second = snake.slice(split_idx, -1)
+		# reselect the snake's head piece
+		var newsnake_idx : int = arrow_map.add_snake(first)
+		arrow_map.apply_snake_both(newsnake_idx, tile_map)
+		arrow_map.apply_snake_both(arrow_map.add_snake(second), tile_map)
+		select_snake(newsnake_idx)
+
+func join_selected_snake(snake_idx : int):
+	var snake1 : Snake = arrow_map.snakes[last_snake]
+	var snake2 : Snake = arrow_map.snakes[snake_idx]
+	var newsnake = snake1.join(snake2)
+	if newsnake != null:
+		arrow_map.delete_snake_both(last_snake, tile_map)
+		arrow_map.delete_snake_both(snake_idx, tile_map)
+		var newsnake_idx : int = arrow_map.add_snake(newsnake)
+		arrow_map.apply_snake_both(newsnake_idx, tile_map)
+		select_snake(newsnake_idx)
 
 func get_snakes() -> Array[Snake]:
 	return arrow_map.get_snakes()

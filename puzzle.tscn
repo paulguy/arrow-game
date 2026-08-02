@@ -80,16 +80,11 @@ offset_bottom = 720.0
 [node name="Menu" type="VBoxContainer" parent="Overlay" unique_id=1017222792]
 layout_mode = 2
 
-[node name="Back" parent="Overlay/Menu" unique_id=728411159 instance=ExtResource("5_re6l2")]
+[node name="Menu" parent="Overlay/Menu" unique_id=728411159 instance=ExtResource("5_re6l2")]
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
 [node name="Mode" parent="Overlay/Menu" unique_id=2141985092 instance=ExtResource("5_re6l2")]
-visible = false
-modulate = Color(1, 1, 1, 0.49803922)
-layout_mode = 2
-
-[node name="Add" parent="Overlay/Menu" unique_id=1328724617 instance=ExtResource("5_re6l2")]
 visible = false
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
@@ -107,11 +102,7 @@ layout_mode = 2
 visible = false
 layout_mode = 2
 
-[node name="Split" parent="Overlay/Menu" unique_id=1811260475 instance=ExtResource("5_re6l2")]
-visible = false
-layout_mode = 2
-
-[node name="Join" parent="Overlay/Menu" unique_id=1280080035 instance=ExtResource("5_re6l2")]
+[node name="Action" parent="Overlay/Menu" unique_id=1811260475 instance=ExtResource("5_re6l2")]
 visible = false
 layout_mode = 2
 
@@ -147,14 +138,12 @@ material = SubResource("CanvasItemMaterial_o8fo8")
 polygon = PackedVector2Array(0, 0, 100, 0, 100, 100, 0, 100)
 
 [connection signal="gui_input" from="Overlay" to="." method="ui_event" flags=18]
-[connection signal="gui_input" from="Overlay/Menu/Back" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Menu" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/Menu/Mode" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Overlay/Menu/Add" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/Menu/Delete" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/Menu/Grow" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/Menu/Reverse" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Overlay/Menu/Split" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Overlay/Menu/Join" to="." method="menu_button_event" flags=18]
+[connection signal="gui_input" from="Overlay/Menu/Action" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/D-Pad" to="." method="ui_event" flags=18]
 [connection signal="gui_input" from="Overlay/D-Pad/Up" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/D-Pad/Left" to="." method="menu_button_event" flags=18]

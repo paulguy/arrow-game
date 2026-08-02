@@ -38,13 +38,26 @@ const BORDER_SHADOW_R : Vector2i = Vector2i(1, 1)
 const BORDER_SHADOW_R_ALT : int = 1
 
 const EDITOR_BUTTONS : Array[String] = [
-	"Add",
 	"Delete",
 	"Grow",
 	"Reverse",
+	"Action"
+]
+
+const ACTION_NAMES : Array[String] = [
+	"Select",
+	"Add",
 	"Split",
 	"Join"
 ]
+
+enum Action {
+	SELECT = 0,
+	ADD,
+	SPLIT,
+	JOIN,
+	MAX
+}
 
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
@@ -88,13 +101,6 @@ var editor : bool = false:
 					get_node(NodePath("Overlay/Menu/%s" % item)).visible = false
 				$"Overlay/D-Pad".visible = false
 		editor = mode
-var adding : bool = false:
-	set(val):
-		if val:
-			$"Overlay/Menu/Add".modulate.a = 1.0
-		else:
-			$"Overlay/Menu/Add".modulate.a = BUTTON_SHADE_ALPHA
-		adding = val
 var grow : bool = false:
 	set(val):
 		if val:
@@ -102,13 +108,14 @@ var grow : bool = false:
 		else:
 			$"Overlay/Menu/Grow".modulate.a = BUTTON_SHADE_ALPHA
 		grow = val
+var action : Action = Action.SELECT
 
 func _ready():
 	arrow_view = load("res://ArrowView.tscn").instantiate()
 	add_child(arrow_view)
 	move_child(arrow_view, border.get_index() + 1)
 
-	$"Overlay/Menu/Back/Margins/Text".text = "Menu"
+	$"Overlay/Menu/Menu/Margins/Text".text = "Menu"
 	if not play_mode:
 		# in edit mode, make edit items visible
 		$"Overlay/Menu/Mode/Margins/Text".text = "Mode"
@@ -120,6 +127,7 @@ func _ready():
 			button.modulate.a = BUTTON_SHADE_ALPHA
 			var label : Label = button.get_node("Margins/Text")
 			label.text = item
+		$"Overlay/Menu/Action/Margins/Text".text = ACTION_NAMES[action]
 		$"Overlay/D-Pad/Up/Margins/Text".text = "▲"
 		$"Overlay/D-Pad/Left/Margins/Text".text = "◀"
 		$"Overlay/D-Pad/Right/Margins/Text".text = "▶"
@@ -250,16 +258,27 @@ func ui_event(e : InputEvent, c : Control):
 		if touch_e.pressed:
 			var snake_idx : int
 			snake_idx = arrow_view.pick_snake(get_view_rel_pos(touch_e.position + c.position))
+			print(snake_idx)
 			if editor:
-				if adding:
+				if action == Action.ADD:
 					if snake_idx < 0:
 						# only add a snake if no snake was there
 						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
 						# point it towards the outside
 						var towards : Side = arrow_view.get_side(pos)
 						arrow_view.add_snake(pos, 1, towards)
-						adding = false
+					else:
+						# select clicked snakes in add mode anyway
+						arrow_view.select_snake(snake_idx)
+				elif action == Action.SPLIT:
+					if snake_idx >= 0:
+						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
+						arrow_view.split_selected_snake(pos)
+				elif action == Action.JOIN:
+					if snake_idx >= 0:
+						arrow_view.join_selected_snake(snake_idx)
 				else:
+					# Default action: select
 					arrow_view.select_snake(snake_idx)
 			else:
 				if arrow_view.last_snake >= 0 and snake_idx == arrow_view.last_snake:
@@ -305,18 +324,19 @@ func menu_button_event(e : InputEvent, c : Control) -> void:
 		for item in ui_menu.get_children():
 			if c == item:
 				match c.name:
-					"Back":
+					"Menu":
 						ingame_menu()
 					"Mode":
 						editor = not editor
-					"Add":
-						adding = not adding
 					"Delete":
 						arrow_view.delete_selected_snake()
 					"Grow":
 						grow = not grow
 					"Reverse":
 						arrow_view.reverse_selected_snake()
+					"Action":
+						action = ((action + 1) % Action.MAX) as Action
+						$"Overlay/Menu/Action/Margins/Text".text = ACTION_NAMES[action]
 		for item in d_pad.get_children():
 			if c == item:
 				match c.name:

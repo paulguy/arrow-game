@@ -35,6 +35,18 @@ func get_pos(idx : int = TYPE_MAX) -> Vector2i:
 
 	return lastPos
 
+func which_pos(which : Vector2i) -> int:
+	var curPos : Vector2i = pos
+	if which == pos:
+		return 0
+
+	for i in len(nextTowards):
+		curPos += UPDATE_POS[nextTowards[i]]
+		if which == curPos:
+			return i + 1
+
+	return -1
+
 func move(towards : Side, resize : bool = false) -> Vector2i:
 	var lastPos : Vector2i
 	if towards == OPPOSITE_SIDE[headTowards]:
@@ -93,16 +105,114 @@ func slice(start : int, end : int) -> Snake:
 	var newsnake : Snake
 
 	if end == -1:
-		end = len(nextTowards) + 1
+		end = len(nextTowards)
 	var start_pos : Vector2i = get_pos(start)
 	var towards : Side = headTowards
-	if start > 0:
-		towards = OPPOSITE_SIDE[nextTowards[start]]
-		newsnake = Snake.new(start_pos, end - start, towards)
-		for i in end - start:
-			newsnake.nextTowards[i] = nextTowards[start + i]
+	if start == 0:
+		newsnake = Snake.new(start_pos, end + 1, towards)
+		for i in end:
+			newsnake.nextTowards[i] = nextTowards[i]
 	else:
-		newsnake = Snake.new(start_pos, end, towards)
-		for i in end - 1:
-			newsnake.nextTowards[i] = nextTowards[start + i]
+		start -= 1
+		end -= 1
+		if start < len(nextTowards) - 1:
+			towards = OPPOSITE_SIDE[nextTowards[start + 1]]
+		newsnake = Snake.new(start_pos, end - start + 1, towards)
+		for i in end - start:
+			newsnake.nextTowards[i] = nextTowards[start + 1 + i]
 	return newsnake
+
+func adjacent(pos1 : Vector2i, pos2 : Vector2i) -> int:
+	# return pos2's relation with pos1
+	if pos1 + Vector2i.UP == pos2:
+		return SIDE_TOP
+	if pos1 + Vector2i.DOWN == pos2:
+		return SIDE_BOTTOM
+	if pos1 + Vector2i.LEFT == pos2:
+		return SIDE_LEFT
+	if pos1 + Vector2i.RIGHT == pos2:
+		return SIDE_RIGHT
+	return -1
+
+func join(other : Snake):
+	var thistail : Vector2i = get_pos()
+	var othertail : Vector2i = other.get_pos()
+	var newsnake : Snake
+	var join_dir : int
+	# give this snake the head
+	join_dir = adjacent(pos, other.pos)
+	if join_dir >= 0:
+		print("head to head")
+		# other snake's head is near this snake's head
+		# the new head will be at this snake's tail
+		if len(nextTowards) == 0:
+			# no tail
+			# can only face in the attachment direction
+			newsnake = Snake.new(thistail, 2 + len(other.nextTowards), OPPOSITE_SIDE[join_dir])
+		else:
+			# whole snake with a tail
+			# faces in the tail direction
+			newsnake = Snake.new(thistail, 2 + len(nextTowards) + len(other.nextTowards), nextTowards[-1])
+		# trace the snake in to the new snake from tail to head
+		for i in len(nextTowards):
+			newsnake.nextTowards[i] = OPPOSITE_SIDE[nextTowards[-i - 1]]
+		# join at the heads
+		newsnake.nextTowards[len(nextTowards)] = join_dir as Side
+		# trace the rest of the way through the other snake head to tail
+		for i in len(other.nextTowards):
+			newsnake.nextTowards[len(nextTowards) + 1 + i] = other.nextTowards[i]
+		return newsnake
+	join_dir = adjacent(thistail, other.pos)
+	if join_dir >= 0:
+		print("tail to head")
+		# this snake in front of the other snake
+		# head stays the same
+		newsnake = Snake.new(pos, 2 + len(nextTowards) + len(other.nextTowards), headTowards)
+		# trace through this snake head to tail
+		for i in len(nextTowards):
+			newsnake.nextTowards[i] = nextTowards[i]
+		# join this tail to the other head
+		newsnake.nextTowards[len(nextTowards)] = join_dir as Side
+		# trace through the other snake head to tail
+		for i in len(other.nextTowards):
+			newsnake.nextTowards[len(nextTowards) + 1 + i] = other.nextTowards[i]
+		return newsnake
+	join_dir = adjacent(pos, othertail)
+	if join_dir >= 0:
+		print("head to tail")
+		# this snake sniffing the other tail
+		# the new head will be at this snake's tail
+		if len(nextTowards) == 0:
+			# no tail
+			# can only face in the attachment direction
+			newsnake = Snake.new(thistail, 2 + len(other.nextTowards), OPPOSITE_SIDE[join_dir])
+		else:
+			# whole snake with a tail
+			# faces in the tail direction
+			newsnake = Snake.new(thistail, 2 + len(nextTowards) + len(other.nextTowards), nextTowards[-1])
+		# trace the snake in to the new snake from tail to head
+		for i in len(nextTowards):
+			newsnake.nextTowards[i] = OPPOSITE_SIDE[nextTowards[-i - 1]]
+		# join the other tail to this head
+		newsnake.nextTowards[len(nextTowards)] = join_dir as Side
+		# trace through the other snake tail to head
+		for i in len(other.nextTowards):
+			newsnake.nextTowards[len(nextTowards) + 1 + i] = OPPOSITE_SIDE[other.nextTowards[-i - 1]]
+		return newsnake
+	join_dir = adjacent(thistail, othertail)
+	if join_dir >= 0:
+		print("tail to tail")
+		# tail to tail
+		# head stays the same
+		newsnake = Snake.new(pos, 2 + len(nextTowards) + len(other.nextTowards), headTowards)
+		# trace through this snake head to tail
+		for i in len(nextTowards):
+			newsnake.nextTowards[i] = nextTowards[i]
+		# join at the tails
+		newsnake.nextTowards[len(nextTowards)] = join_dir as Side
+		# trace through the other snake tail to head
+		for i in len(other.nextTowards):
+			newsnake.nextTowards[len(nextTowards) + 1 + i] = OPPOSITE_SIDE[other.nextTowards[-i - 1]]
+		return newsnake
+
+	return null
