@@ -3,6 +3,10 @@ extends Control
 const MAX_SEPARATION : int = 20
 const MIN_SEPARATION : int = 2
 
+const CHANGE_PERIODS : Array[float] = [
+	0.2, 0.08, 0.03
+]
+
 @onready var container : VBoxContainer = $"Container"
 @onready var filler : Control = $"Container/Heading Filler"
 
@@ -14,6 +18,7 @@ var menu_descs : Dictionary[MenuItem, MenuItemDesc] = {}
 var menu_items : Dictionary[Control, MenuItem] = {}
 var last_change : MenuValue = null
 var last_change_time : float = 0.0
+var last_value_change_time : float = 0.0
 var change_mult : int = 0
 
 var size_changed : bool = false
@@ -26,7 +31,13 @@ func _ready():
 	title_control.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_control.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-func _process(_delta : float):
+func change_value(desc : MenuItemDesc, item : MenuItem, amount):
+	item.value = min(max(item.value + amount, desc.min_value), desc.max_value)
+	if desc.change_func.is_valid():
+		item.value = desc.change_func.call(item.value)
+	desc.value = item.value
+
+func _process(delta : float):
 	# ugly hacks to make the menu try to fit the screen
 	var rect : Vector2 = container.get_rect().size
 	var screen_rect : Vector2 = get_viewport_rect().size
@@ -40,13 +51,12 @@ func _process(_delta : float):
 		screen_rect.y /= 2.0
 
 	if size_changed:
-		if size_seek == 0:
-			if rect.x > screen_rect.x or rect.y > screen_rect.y:
-				# if any axis is larger, try to shrink
-				size_seek = -1
-			elif rect.x < screen_rect.x and rect.y < screen_rect.y:
-				# if both axes are smaller, try to grow
-				size_seek = 1
+		if rect.x > screen_rect.x or rect.y > screen_rect.y:
+			# if any axis is larger, try to shrink
+			size_seek = -1
+		elif rect.x < screen_rect.x and rect.y < screen_rect.y:
+			# if both axes are smaller, try to grow
+			size_seek = 1
 		size_changed = false
 
 	var separation : int
@@ -74,12 +84,13 @@ func _process(_delta : float):
 			size_seek = 0
 
 	if last_change != null:
+		last_change_time += delta
+
 		var desc : MenuValueDesc = menu_descs[last_change as MenuItem]
-		var hold_time : float = (Time.get_ticks_usec() / 1000000.0) - last_change_time + 1.0
-		last_change.value = max(last_change.value + int(hold_time) * change_mult, desc.min_value)
-		if desc.change_func.is_valid():
-			last_change.value = desc.change_func.call(last_change.value)
-		desc.value = last_change.value
+		var period : float = CHANGE_PERIODS[min(len(CHANGE_PERIODS) - 1, int(last_change_time))]
+		if last_change_time - last_value_change_time >= period:
+			last_value_change_time = last_change_time
+			change_value(desc, last_change, change_mult)
 
 func clear_last_press():
 		last_change = null
@@ -173,11 +184,12 @@ func menu_select(e : InputEvent, c : Control):
 		desc.activate_func.call()
 
 func menu_change(c : Control):
-	var item : MenuValue = menu_items[c]
-	last_change_time = Time.get_ticks_usec() / 1000000.0
+	last_change_time = 0.0
+	last_value_change_time = 0.0
 	last_change = menu_items[c]
+	var desc : MenuValueDesc = menu_descs[last_change as MenuItem]
+	change_value(desc, last_change, change_mult)
 
-# TODO: allow holding with inertia
 func menu_dec(e : InputEvent, c : Control):
 	if e_is_pressed(e):
 		change_mult = -1

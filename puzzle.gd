@@ -88,6 +88,7 @@ var editor : bool = false:
 			if not editor:
 				# restore the list of snakes
 				arrow_view.set_snakes(backup_snakes)
+				$"Overlay/Menu/Mode/Margins/Text".text = "Test"
 				for item in EDITOR_BUTTONS:
 					get_node(NodePath("Overlay/Menu/%s" % item)).visible = true
 				$"Overlay/D-Pad".visible = true
@@ -95,6 +96,7 @@ var editor : bool = false:
 			if editor:
 				# backup the list of snakes
 				backup_snakes = arrow_view.get_snakes()
+				$"Overlay/Menu/Mode/Margins/Text".text = "Edit"
 				# update the collisions for flies
 				arrow_view.update_astar()
 				for item in EDITOR_BUTTONS:
@@ -140,7 +142,7 @@ func _ready():
 	arrow_viewport.texture = viewport_texture
 	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
 
-	arrow_view.connect(&"puzzle_finished", endgame_menu)
+	arrow_view.connect(&"puzzle_finished", puzzle_clear)
 
 func _physics_process(_delta : float):
 	if not editor:
@@ -239,7 +241,7 @@ func set_puzzle_size(size : Vector2i):
 	arrow_view.make_map(size)
 	map_size = arrow_view.get_map_size()
 	tile_size = arrow_view.tile_size
-	update_border(size)
+	update_border(map_size)
 
 func generate_random(gen_params : RandGenParams):
 	arrow_view.generate_random(gen_params)
@@ -258,7 +260,6 @@ func ui_event(e : InputEvent, c : Control):
 		if touch_e.pressed:
 			var snake_idx : int
 			snake_idx = arrow_view.pick_snake(get_view_rel_pos(touch_e.position + c.position))
-			print(snake_idx)
 			if editor:
 				if action == Action.ADD:
 					if snake_idx < 0:
@@ -325,7 +326,10 @@ func menu_button_event(e : InputEvent, c : Control) -> void:
 			if c == item:
 				match c.name:
 					"Menu":
-						ingame_menu()
+						if editor:
+							editor_menu()
+						else:
+							ingame_menu()
 					"Mode":
 						editor = not editor
 					"Delete":
@@ -361,6 +365,11 @@ func menu_button_event(e : InputEvent, c : Control) -> void:
 						else:
 							arrow_view.move_selected_snake(SIDE_RIGHT)
 
+func update_menu(title : String, items : Array[MenuItemDesc]):
+	menu.set_heading(title)
+	menu.set_items(items)
+	menu.update_size(last_size)
+
 func make_menu(title : String, items : Array[MenuItemDesc]):
 	# bit more involved because the menu is only loaded when needed
 	shade.visible = true
@@ -368,11 +377,7 @@ func make_menu(title : String, items : Array[MenuItemDesc]):
 	menu_display = true
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
-	menu.size = last_size
-	menu.update_size(last_size)
-	menu.set_heading(title)
-	menu.set_items(items)
-	menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+	update_menu(title, items)
 
 func ingame_menu():
 	make_menu("Game Menu", menu_ingame)
@@ -396,6 +401,7 @@ func puzzle_clear():
 	if play_mode:
 		endgame_menu()
 	else:
+		arrow_view.clear_offscreen_snake()
 		editor = true
 
 func endgame_menu():
@@ -404,3 +410,36 @@ func endgame_menu():
 var menu_endgame : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
 ]
+
+func editor_menu():
+	make_menu("Editor Menu", menu_editor)
+
+var menu_editor : Array[MenuItemDesc] = [
+	MenuSelectionDesc.new(resize_menu, "Resize"),
+	MenuSelectionDesc.new(return_to_game, "Return to Editor"),
+	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
+]
+
+func resize_menu():
+	menu_resize[0].value = 0
+	menu_resize[1].value = 0
+	menu_resize[2].value = map_size.x
+	menu_resize[3].value = map_size.y
+	update_menu("Resize", menu_resize)
+
+var menu_resize : Array[MenuItemDesc] = [
+	MenuValueDesc.new(0, 0, 200, null, "Left"),
+	MenuValueDesc.new(0, 0, 200, null, "Top"),
+	MenuValueDesc.new(0, 1, 200, null, "New Width"),
+	MenuValueDesc.new(0, 1, 200, null, "New Height"),
+	MenuSelectionDesc.new(resize, "Resize"),
+	MenuSelectionDesc.new(return_to_game, "Return to Editor")
+]
+
+func resize():
+	var new_bounds : Rect2i = Rect2i(Vector2i(menu_resize[0].value, menu_resize[1].value),
+									 Vector2i(menu_resize[2].value, menu_resize[3].value))
+	arrow_view.resize_puzzle(new_bounds)
+	map_size = arrow_view.get_map_size()
+	update_border(map_size)
+	return_to_game()

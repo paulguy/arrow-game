@@ -209,6 +209,14 @@ func apply_both(pos : Vector2i,
 	occupied_by[size.x * pos.y + pos.x] = snake_index
 	tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
 
+func apply_many(pos : Vector2i,
+				snake_part : int,
+				snake_index : int,
+				tile_maps : Array[TileMapLayer]):
+	occupied_by[size.x * pos.y + pos.x] = snake_index
+	for tile_map in tile_maps:
+		tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
+
 func apply_fly(pos : Vector2i,
 			   _snake_part : int,
 			   _snake_index : int,
@@ -289,11 +297,15 @@ func apply_snake_tilemap(index : int, tile_map : TileMapLayer):
 func apply_snake_both(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, apply_both, tile_map)
 
+func apply_snake_many(index : int, tile_maps : Array[TileMapLayer]):
+	do_apply_snake(index, apply_many, tile_maps)
+
 func delete_snake_map(index : int):
 	var snake : Snake = snakes[index]
 	if snake == DEAD_SNAKE:
 		return
 	do_apply_snake(index, delete_map)
+	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
 
 func delete_snake_fly(index : int):
@@ -301,6 +313,7 @@ func delete_snake_fly(index : int):
 	if snake == DEAD_SNAKE:
 		return
 	do_apply_snake(index, apply_fly)
+	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
 
 func delete_snake_tilemap(index : int, tile_map : TileMapLayer):
@@ -311,6 +324,7 @@ func delete_snake_both(index : int, tile_map : TileMapLayer):
 	if snake == DEAD_SNAKE:
 		return
 	do_apply_snake(index, delete_both, tile_map)
+	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
 
 func delete_snake_astar(index : int, astar : AStarGrid2D):
@@ -346,12 +360,15 @@ func do_move_snake(index : int,
 				   action_arg = null,
 				   grow = false):
 	var snake : Snake = snakes[index]
+	var pos : Vector2i = snake.pos
 
 	if len(snake.nextTowards) == 0:
+		# change head direction for single segment snakes
+		# this is so if the snake is growing, it'll have the
+		# correct direction
 		snake.headTowards = towards
 
 	# replace head piece with body piece
-	var pos : Vector2i = snake.pos
 	if len(snake.nextTowards) > 0 or grow:
 		action.call(pos, NEXT_CELL[Vector2i(snake.headTowards, towards)], index, action_arg)
 
@@ -419,32 +436,89 @@ func reverse_snake_both(index : int,
 						tile_map : TileMapLayer):
 	do_reverse_snake(index, apply_both, tile_map)
 
-func trim_snake_to_fit(index : int, bounds : Vector2i):
+func slice_map_snake(snake : Snake,
+					 index : int,
+					 head : int,
+					 tail : int,
+					 tile_maps : Array[TileMapLayer],
+					 used_index : bool) -> bool:
+	# create the new snake slice
+	var newsnake : Snake = snake.slice(head, tail)
+
+	if not used_index:
+		# reuse the original snake index
+		snakes[index] = newsnake
+		# lay the new snake on to the maps
+		if len(tile_maps) == 0:
+			apply_snake_map(index)
+		else:
+			apply_snake_many(index, tile_maps)
+		return true
+	else:
+		snakes.append(newsnake)
+		if len(tile_maps) == 0:
+			apply_snake_map(len(snakes) - 1)
+		else:
+			apply_snake_many(len(snakes) - 1, tile_maps)
+
+	return false
+
+func trim_snake_to_fit(index : int, tile_maps : Array[TileMapLayer] = []) -> bool:
+	var trimmed : bool = false
+	var fully_out : bool = true
+
 	var snake : Snake = snakes[index]
 	# find if the snake is off the screen and split it
+	# head is position 0
 	var first : int = 0
 	var used_index : bool = false
 	var bodypos : Vector2i = snake.pos
-	if bodypos.x < 0 or bodypos.x >= bounds.x or \
-	   bodypos.y < 0 or bodypos.y >= bounds.y:
+	if bodypos.x < 0 or bodypos.x >= size.x or \
+	   bodypos.y < 0 or bodypos.y >= size.y:
+		# if already out of bounds, the head is not the first piece
 		first = -1
 
 	for i in len(snake.nextTowards):
 		bodypos += Snake.UPDATE_POS[snake.nextTowards[i]]
-		if bodypos.x < 0 or bodypos.x >= bounds.x or \
-		   bodypos.y < 0 or bodypos.y >= bounds.y:
+		if bodypos.x < 0 or bodypos.x >= size.x or \
+		   bodypos.y < 0 or bodypos.y >= size.y:
+			# out of bounds
 			if first != -1:
-				var newsnake : Snake = snake.slice(first, i - 1)
-				if not used_index:
-					do_apply_snake(index, delete_map_checked)
-					snakes[index] = newsnake
-					used_index = true
-				else:
-					snakes.append(newsnake)
+				# just transitioned out of bounds, make the slice
+				# i counts tail pieces so it's 1 less than the snake position
+				# but this i is 1 out of bounds so it's 1 more than it should be
+				# so it cancels out
+				used_index = slice_map_snake(snake, index, first, i, tile_maps, used_index)
+				trimmed = true
+				first = -1
+		elif i == len(snake.nextTowards) - 1:
+			# end of snake
+			if first != -1:
+				# i counts tail pieces so it's 1 less than it should be
+				used_index = slice_map_snake(snake, index, first, i + 1, tile_maps, used_index)
+				trimmed = true
 				first = -1
 		else:
-			if first == -1:
-				first = i
+			fully_out = false
+			# in bounds
+			if i == len(snake.nextTowards) - 1:
+				# snake poking into bounds
+				# same note about i as above
+				used_index = slice_map_snake(snake, index, first, i + 1, tile_maps, used_index)
+				trimmed = true
+			elif first == -1:
+				# just transitioned in bounds, so mark the first i
+				# 0 is the head and i counts body pieces
+				first = i + 1
+
+	if fully_out:
+		snakes[index].free()
+		snakes[index] = DEAD_SNAKE
+
+	if trimmed:
+		snake.free()
+
+	return trimmed
 
 func add_snake(snake : Snake) -> int:
 	snakes.append(snake)
@@ -472,7 +546,7 @@ func rand_snake(pos : Vector2i,
 			break
 		do_move_snake(index, next as Side, apply_map_checked)
 
-	trim_snake_to_fit(index, size)
+	trim_snake_to_fit(index)
 
 func generate_random(gen_params : RandGenParams) -> int:
 	var active_snakes : int = 0
@@ -556,37 +630,27 @@ func _init(size : Vector2i):
 	self.size = size
 	clear()
 
-func resize_puzzle(new_size : Vector2i):
-	# fit snakes to new size
+func resize_puzzle(new_bounds : Rect2i, tile_maps : Array[TileMapLayer]):
+	# just clear any tilemaps entirely
+	for tile_map in tile_maps:
+		tile_map.clear()
+
+	occupied_by = PackedInt32Array()
+	occupied_by.resize(new_bounds.size.x * new_bounds.size.y)
+	occupied_by.fill(UNOCCUPIED_ID)
+	size = new_bounds.size
+
+	# trim snakes to new size
 	for i in len(snakes):
-		trim_snake_to_fit(i, new_size)
+		if snakes[i] == DEAD_SNAKE:
+			continue
+		# reorigin the snakes
+		snakes[i].pos -= new_bounds.position
+		if not trim_snake_to_fit(i, tile_maps):
+			# if they weren't trimmed, just place them on the new tilemap
+			apply_snake_many(i, tile_maps)
 
-	# make fillers
-	var xfiller : PackedInt32Array
-	if new_size.x > size.x:
-		xfiller = PackedInt32Array()
-		xfiller.resize(new_size.x - size.x)
-		xfiller.fill(UNOCCUPIED_ID)
-	var yfiller : PackedInt32Array
-	if new_size.y > size.y:
-		yfiller = PackedInt32Array()
-		yfiller.resize(new_size.x)
-		yfiller.fill(UNOCCUPIED_ID)
-	var new_occupied : PackedInt32Array = PackedInt32Array()
-	for y in size.y:
-		# copy original rows in to new puzzle
-		new_occupied.append_array(occupied_by.slice(size.x * y, size.x * y + min(size.x, new_size.x)))
-		if new_size.x > size.x:
-			# insert filler if any
-			new_occupied.append_array(xfiller)
-	if new_size.y > size.y:
-		for y in new_size.y - size.y:
-			# insert filler if any
-			new_occupied.append_array(yfiller)
-
-	size = new_size
-
-func apply_map_full(tile_map : TileMapLayer):
+func apply_tilemap_full(tile_map : TileMapLayer):
 	tile_map.clear()
 
 	for i in len(snakes):
@@ -614,8 +678,11 @@ func get_snakes() -> Array[Snake]:
 
 	return newsnakes
 
-func set_snakes(newsnakes : Array[Snake]):
+func set_snakes(newsnakes : Array[Snake], tile_map : TileMapLayer = null):
 	clear()
 	snakes = newsnakes
 	for index in len(snakes):
-		do_apply_snake(index, apply_map_checked)
+		if tile_map == null:
+			apply_snake_map(index)
+		else:
+			apply_snake_both(index, tile_map)

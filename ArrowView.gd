@@ -90,19 +90,33 @@ func activate_snake():
 func add_snake(pos : Vector2i,
 			   length : int,
 			   towards : Side):
-	var snake : Snake = Snake.new(pos, length, towards)
-	var index : int = arrow_map.add_snake(snake)
-	arrow_map.apply_snake_both(index, tile_map)
-	select_snake(index)
+	if pos.x >= 0 and pos.x < arrow_map.size.x and \
+	   pos.y >= 0 and pos.y < arrow_map.size.y:
+		var snake : Snake = Snake.new(pos, length, towards)
+		var index : int = arrow_map.add_snake(snake)
+		arrow_map.apply_snake_both(index, tile_map)
+		select_snake(index)
+		active_snakes += 1
 
 func delete_selected_snake():
+	if last_snake < 0:
+		return
+
 	arrow_map.delete_snake_both(last_snake, tile_map)
 	last_snake = -1
+	active_snakes -= 1
 
 func snake_blocked(snake : Snake, towards : Side) -> bool:
-	return arrow_map.space_occupied(snake.pos + Snake.UPDATE_POS[towards])
+	var map_size : Vector2i = arrow_map.size
+	var new_pos : Vector2i = snake.pos + Snake.UPDATE_POS[towards]
+	return arrow_map.space_occupied(new_pos) or \
+		   new_pos.x < 0 or new_pos.x >= map_size.x or \
+		   new_pos.y < 0 or new_pos.y >= map_size.y
 
 func move_selected_snake(towards : Side):
+	if last_snake < 0:
+		return
+
 	var snake : Snake = arrow_map.snakes[last_snake]
 	if len(snake.nextTowards) > 0 and \
 	   towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
@@ -115,6 +129,9 @@ func move_selected_snake(towards : Side):
 		set_snake_column(snake, 1)
 
 func grow_selected_snake(towards : Side):
+	if last_snake < 0:
+		return
+
 	var snake : Snake = arrow_map.snakes[last_snake]
 	if len(snake.nextTowards) > 0 and \
 	   towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
@@ -127,6 +144,9 @@ func grow_selected_snake(towards : Side):
 		set_snake_column(snake, 1)
 
 func reverse_selected_snake():
+	if last_snake < 0:
+		return
+
 	arrow_map.reverse_snake_both(last_snake, tile_map)
 	set_snake_column(arrow_map.snakes[last_snake], 1)
 
@@ -159,13 +179,15 @@ func join_selected_snake(snake_idx : int):
 		arrow_map.apply_snake_both(newsnake_idx, tile_map)
 		select_snake(newsnake_idx)
 
+func resize_puzzle(new_bounds : Rect2i):
+	arrow_map.resize_puzzle(new_bounds, [tile_map, coll_tile_map])
+
 func get_snakes() -> Array[Snake]:
 	return arrow_map.get_snakes()
 
 func set_snakes(newsnakes : Array[Snake]):
-	arrow_map.set_snakes(newsnakes)
-	arrow_map.apply_map_full(tile_map)
-	arrow_map.apply_map_full(coll_tile_map)
+	arrow_map.set_snakes(newsnakes, tile_map)
+	arrow_map.apply_tilemap_full(coll_tile_map)
 	active_snake = null
 	active_snakes = len(arrow_map.snakes)
 
@@ -237,6 +259,15 @@ func dec_active_and_signal():
 	if active_snakes == 0:
 		puzzle_finished.emit()
 
+func clear_offscreen_snake():
+	if offscreen_snake != null:
+		arrow_map.snakes.append(offscreen_snake)
+		arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, tile_map)
+		arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
+		arrow_map.snakes.pop_back()
+		offscreen_snake.free()
+		offscreen_snake = null
+
 func step():
 	if last_delta < physics_delta * SLOW_RATIO:
 		# only try to make flies if it's not running slow
@@ -256,7 +287,7 @@ func step():
 		   (active_snake.headTowards == SIDE_RIGHT and pos.x == arrow_map.size.x - 1) or \
 		   (active_snake.headTowards == SIDE_TOP and pos.y == 0) or \
 		   (active_snake.headTowards == SIDE_BOTTOM and pos.y == arrow_map.size.y - 1):
-			# reached edge
+			# reached puzzle edge
 
 			# copy the snake
 			offscreen_snake = arrow_map.snakes[active_index].copy()
@@ -273,6 +304,7 @@ func step():
 			active_snake = null
 			dec_active_and_signal()
 		else:
+			# moving towards the edge
 			pos += Snake.UPDATE_POS[active_snake.headTowards]
 			# check for flies and immediately release them
 			if tile_map.get_cell_atlas_coords(pos).y == ArrowMap.ArrowCell.FLY:
@@ -311,13 +343,9 @@ func step():
 		   (offscreen_snake.headTowards == SIDE_BOTTOM and \
 		   (offscreen_snake.pos.y - offscreen_overhang) * tile_size.y + corner_tl.y > get_viewport_rect().end.y / view_zoom):
 			# went offscreen
-			arrow_map.snakes.append(offscreen_snake)
-			arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, tile_map)
-			arrow_map.delete_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
-			arrow_map.snakes.pop_back()
-			offscreen_snake.free()
-			offscreen_snake = null
+			clear_offscreen_snake()
 		else:
+			# moving outside of puzzle
 			arrow_map.snakes.append(offscreen_snake)
 			arrow_map.move_snake_tilemap(len(arrow_map.snakes) - 1, offscreen_snake.headTowards, tile_map)
 			arrow_map.apply_snake_tilemap(len(arrow_map.snakes) - 1, coll_tile_map)
