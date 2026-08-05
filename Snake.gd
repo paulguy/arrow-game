@@ -28,7 +28,7 @@ func _init(pos : Vector2i, length : int, towards : Side):
 	# grow away from head
 	nextTowards.fill(OPPOSITE_SIDE[towards])
 
-func get_pos(idx : int = TYPE_MAX) -> Vector2i:
+func get_pos(idx : int = INT32_MAX) -> Vector2i:
 	var lastPos : Vector2i = pos
 	for t in min(idx, len(nextTowards)):
 		lastPos += UPDATE_POS[nextTowards[t]]
