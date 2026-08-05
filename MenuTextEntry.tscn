@@ -1,21 +1,18 @@
 [gd_scene format=3 uid="uid://brka6x20dnjgm"]
 
+[ext_resource type="Script" uid="uid://cb6tlead6yqu7" path="res://MenuTextEntry.gd" id="1_wffnr"]
 [ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="2_cox05"]
 
 [node name="HBoxContainer" type="HBoxContainer" unique_id=1568702876]
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="Left Pad" type="Control" parent="." unique_id=1284629287]
-layout_mode = 2
-size_flags_horizontal = 3
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 81.0
+grow_horizontal = 2
+script = ExtResource("1_wffnr")
 
 [node name="Label Container" parent="." unique_id=728411159 instance=ExtResource("2_cox05")]
 layout_mode = 2
+size_flags_stretch_ratio = 0.0
 
 [node name="Value Container" parent="." unique_id=1060619221 instance=ExtResource("2_cox05")]
 layout_mode = 2
-
-[node name="Right Pad" type="Control" parent="." unique_id=1852684779]
-layout_mode = 2
-size_flags_horizontal = 3

@@ -88,6 +88,7 @@ var editor : bool = false:
 	set(mode):
 		if mode:
 			if not editor:
+				arrow_view.select_snake(-1)
 				# restore the list of snakes
 				if puzzle_data != null:
 					arrow_view.set_data(puzzle_data)
@@ -99,6 +100,7 @@ var editor : bool = false:
 				$"Overlay/D-Pad".visible = true
 		else:
 			if editor:
+				arrow_view.select_snake(-1)
 				# backup the list of snakes
 				puzzle_data = arrow_view.get_data()
 				$"Overlay/Menu/Mode/Margins/Text".text = "Edit"
@@ -116,6 +118,7 @@ var grow : bool = false:
 			$"Overlay/Menu/Grow".modulate.a = BUTTON_SHADE_ALPHA
 		grow = val
 var action : Action = Action.SELECT
+var file_name : String = "Untitled"
 
 func _ready():
 	arrow_view = load("res://ArrowView.tscn").instantiate()
@@ -424,8 +427,8 @@ func editor_menu():
 	make_menu("Editor Menu", menu_editor)
 
 var menu_editor : Array[MenuItemDesc] = [
+	MenuSelectionDesc.new(file_menu, "File"),
 	MenuSelectionDesc.new(resize_menu, "Resize"),
-#	MenuSelectionDesc.new(save_menu, "Save"),
 	MenuSelectionDesc.new(return_to_game, "Return to Editor"),
 	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
 ]
@@ -451,6 +454,37 @@ func resize():
 	var new_bounds : Rect2i = Rect2i(Vector2i(menu_resize[0].value, menu_resize[1].value),
 									 Vector2i(menu_resize[2].value, menu_resize[3].value))
 	arrow_view.resize_puzzle(new_bounds)
+	map_size = arrow_view.get_map_size()
+	update_border(map_size)
+	return_to_game()
+
+func file_menu():
+	menu_file[0].text = file_name
+	update_menu("File", menu_file)
+
+var menu_file : Array[MenuItemDesc] = [
+	MenuTextEntryDesc.new(file_name, set_file_name, "Name"),
+	MenuSelectionDesc.new(save_file, "Save"),
+	MenuSelectionDesc.new(load_file, "Load"),
+	MenuSelectionDesc.new(return_to_game, "Cancel"),
+]
+
+func set_file_name(file_name : String):
+	self.file_name = file_name
+
+func save_file():
+	var puzzledata : PuzzleData = arrow_view.get_data()
+	var file : FileAccess = FileAccess.open("user://%s.arrows" % file_name, FileAccess.WRITE)
+	file.store_buffer(puzzledata.serialize())
+	file.close()
+	puzzledata.free()
+	return_to_game()
+
+func load_file():
+	arrow_view.select_snake(-1)
+	var puzzledata : PuzzleData = PuzzleData.deserialize(FileAccess.get_file_as_bytes("user://%s.arrows" % file_name))
+	arrow_view.set_data(puzzledata)
+	puzzledata.free()
 	map_size = arrow_view.get_map_size()
 	update_border(map_size)
 	return_to_game()

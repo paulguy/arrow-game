@@ -5,5 +5,4 @@ extends MenuItem
 
 func menu_select(e : InputEvent):
 	if Menu.e_is_activate(e):
-		#clear_last_press()
 		desc.activate_func.call()

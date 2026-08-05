@@ -8,10 +8,6 @@ offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_6krc3")
 
-[node name="Left Pad" type="Control" parent="." unique_id=1284629287]
-layout_mode = 2
-size_flags_horizontal = 3
-
 [node name="Label Container" parent="." unique_id=728411159 instance=ExtResource("2_6krc3")]
 layout_mode = 2
 
@@ -23,7 +19,3 @@ layout_mode = 2
 
 [node name="Inc Container" parent="." unique_id=610831078 instance=ExtResource("2_6krc3")]
 layout_mode = 2
-
-[node name="Right Pad" type="Control" parent="." unique_id=1852684779]
-layout_mode = 2
-size_flags_horizontal = 3

@@ -84,3 +84,92 @@ func set_data(occupied_by : PackedInt32Array):
 			occupied_by[size.x * size.y / 8 * 8 + 6] = ArrowMap.FLY_ID
 
 	return snakes
+
+static func append_snakedata(snakedata : PackedByteArray,
+							 filled : int,
+							 value : Side):
+	# lengthen the array if needed
+	if (filled + 1) / 4 >= len(snakedata):
+		snakedata.append(0)
+
+	# initialize new byte with 0
+	if filled % 4 == 0:
+		snakedata[filled / 4] = 0
+
+	snakedata[filled / 4] |= (value & 0x3) << ((filled % 4) * 2)
+
+static func get_snakedata(snakedata : PackedByteArray,
+						  index : int):
+	return snakedata[index / 4] >> (index % 4 * 2) & 0x3
+
+static func get_snakedata_len(datas : int):
+	return (datas / 4) + (1 if datas % 4 > 0 else 0)
+
+func serialize() -> PackedByteArray:
+	var data : PackedByteArray = PackedByteArray()
+	var snakedata : PackedByteArray = PackedByteArray()
+	var snakedatalen : int
+
+	# store size
+	data.append(size.x)
+	data.append(size.y)
+
+	# store snakes: x, y, count, 
+	for snake in snakes:
+		data.append(snake.pos.x)
+		data.append(snake.pos.y)
+		data.append(0)
+		data.append(0)
+		data.append(0)
+		data.append(0)
+		data.encode_u32(len(data) - 4, len(snake.nextTowards))
+		append_snakedata(snakedata, 0, snake.headTowards)
+		for i in len(snake.nextTowards):
+			append_snakedata(snakedata, i + 1, snake.nextTowards[i])
+		data.append_array(snakedata.slice(0, get_snakedata_len(len(snake.nextTowards) + 1)))
+	data.append(255)
+
+	data.append_array(flies)
+
+	return data
+
+static func deserialize(data : PackedByteArray) -> PuzzleData:
+	var size : Vector2i
+	var snakes : Array[Snake] = []
+
+	size.x = data[0]
+	size.y = data[1]
+
+	var datapos : int = 2
+	var snakepos : Vector2i
+	var snakelen : int
+	var headTowards : Side
+	var nextTowards : Array[Side]
+	while true:
+		# get position
+		snakepos.x = data[datapos]
+		prints(snakepos.x, "%02x" % snakepos.x)
+		# 255 is the magic byte for the last snake
+		if snakepos.x == 255:
+			datapos += 1
+			break
+		snakepos.y = data[datapos + 1]
+		# get length
+		snakelen = data.decode_u32(datapos + 2)
+		# advance snake header
+		datapos += 6
+		# get snake head
+		headTowards = get_snakedata(data, datapos * 4)
+		# get snake tail pieces
+		nextTowards = []
+		for i in snakelen:
+			nextTowards.append(get_snakedata(data, datapos * 4 + i + 1))
+		# advance the number of bytes needed for nextTowards including any tail byte
+		datapos += get_snakedata_len(len(nextTowards) + 1)
+		print(datapos)
+
+		snakes.append(Snake.new(snakepos, 1, headTowards))
+		snakes[-1].nextTowards = nextTowards
+
+	# the rest of the data is flies
+	return PuzzleData.new(size, snakes, data.slice(datapos))
