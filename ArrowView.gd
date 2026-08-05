@@ -15,6 +15,7 @@ const FLY_SCAN_RATIO : float = 0.2
 @onready var flies_camera : Camera2D = $"FliesViewport/Camera2D"
 @onready var tile_map : TileMapLayer = $"SubViewport/ArrowTileMap"
 @onready var coll_tile_map : TileMapLayer = $"FliesViewport/Arrow Collision TileMap"
+var tile_maps : Array[TileMapLayer]
 var fly_res : Resource = preload("res://fly.tscn")
 
 var arrow_map : ArrowMap = null
@@ -33,6 +34,7 @@ var view_zoom : float = 1.0
 var active_snakes : int
 
 func _ready():
+	tile_maps = [tile_map, coll_tile_map]
 	tile_size = tile_map.tile_set.tile_size
 	active_snakes = 0
 
@@ -46,9 +48,7 @@ func update_astar():
 	arrow_map.apply_astar(astar)
 
 func generate_random(gen_params : RandGenParams):
-	active_snakes = arrow_map.generate_random(gen_params)
-	arrow_map.apply_map_full(tile_map)
-	arrow_map.apply_map_full(coll_tile_map)
+	active_snakes = arrow_map.generate_random(gen_params, tile_maps)
 	update_astar()
 
 func make_map(size : Vector2i):
@@ -102,7 +102,7 @@ func delete_selected_snake():
 	if last_snake < 0:
 		return
 
-	arrow_map.delete_snake_both(last_snake, tile_map)
+	arrow_map.delete_snake_many(last_snake, tile_maps)
 	last_snake = -1
 	active_snakes -= 1
 
@@ -154,7 +154,7 @@ func split_selected_snake(pos : Vector2i):
 	var snake : Snake = arrow_map.snakes[last_snake]
 	var split_idx : int = snake.which_pos(pos)
 	if split_idx >= 0:
-		arrow_map.delete_snake_both(last_snake, tile_map)
+		arrow_map.delete_snake_many(last_snake, tile_maps)
 		var first : Snake
 		var second : Snake
 		if split_idx == 0:
@@ -164,8 +164,8 @@ func split_selected_snake(pos : Vector2i):
 		second = snake.slice(split_idx, -1)
 		# reselect the snake's head piece
 		var newsnake_idx : int = arrow_map.add_snake(first)
-		arrow_map.apply_snake_both(newsnake_idx, tile_map)
-		arrow_map.apply_snake_both(arrow_map.add_snake(second), tile_map)
+		arrow_map.apply_snake_many(newsnake_idx, tile_maps)
+		arrow_map.apply_snake_many(arrow_map.add_snake(second), tile_maps)
 		select_snake(newsnake_idx)
 
 func join_selected_snake(snake_idx : int):
@@ -173,23 +173,23 @@ func join_selected_snake(snake_idx : int):
 	var snake2 : Snake = arrow_map.snakes[snake_idx]
 	var newsnake = snake1.join(snake2)
 	if newsnake != null:
-		arrow_map.delete_snake_both(last_snake, tile_map)
-		arrow_map.delete_snake_both(snake_idx, tile_map)
+		arrow_map.delete_snake_many(last_snake, tile_maps)
+		arrow_map.delete_snake_many(snake_idx, tile_maps)
 		var newsnake_idx : int = arrow_map.add_snake(newsnake)
-		arrow_map.apply_snake_both(newsnake_idx, tile_map)
+		arrow_map.apply_snake_many(newsnake_idx, tile_maps)
 		select_snake(newsnake_idx)
 
 func resize_puzzle(new_bounds : Rect2i):
-	arrow_map.resize_puzzle(new_bounds, [tile_map, coll_tile_map])
+	arrow_map.resize_puzzle(new_bounds, tile_maps)
 
 func place_fly(pos : Vector2i):
-	arrow_map.place_fly(pos, [tile_map, coll_tile_map])
+	arrow_map.place_fly(pos, tile_maps)
 
 func get_data() -> PuzzleData:
 	return arrow_map.get_data()
 
 func set_data(data : PuzzleData):
-	arrow_map.set_data(data, [tile_map, coll_tile_map])
+	arrow_map.set_data(data, tile_maps)
 	active_snake = null
 	active_snakes = len(arrow_map.snakes)
 
@@ -294,7 +294,7 @@ func step():
 			# copy the snake
 			offscreen_snake = arrow_map.snakes[active_index].copy()
 			offscreen_overhang = len(offscreen_snake.nextTowards) + 1
-			# clear the snake from the map only
+			# clear the snake from the map
 			arrow_map.delete_snake_map(active_index)
 			# need to append to the arrow_map's array of snakes first
 			arrow_map.snakes.append(active_snake)
@@ -309,7 +309,7 @@ func step():
 			# moving towards the edge
 			pos += Snake.UPDATE_POS[active_snake.headTowards]
 			# check for flies and immediately release them
-			if tile_map.get_cell_atlas_coords(pos).y == ArrowMap.ArrowCell.FLY:
+			if arrow_map.fly_at(pos):
 				clear_fly(pos)
 				var path : Array[Vector2i] = get_fly_path(pos)
 				if len(path) == 0:
@@ -317,19 +317,16 @@ func step():
 				make_fly(path)
 
 			# check if the space is empty or will be empty when the snake moves
-			if arrow_map.occupied_by[arrow_map.size.x * pos.y + pos.x] < 0 or \
+			if not arrow_map.space_occupied(pos) or \
 			   pos == arrow_map.snakes[active_index].get_pos():
 				# moving
-				arrow_map.move_snake_both(active_index, active_snake.headTowards, tile_map)
-				arrow_map.apply_snake_both(active_index, coll_tile_map)
+				arrow_map.move_snake_many(active_index, active_snake.headTowards, tile_maps)
 			else:
 				# hit snake
-				arrow_map.delete_snake_both(active_index, tile_map)
-				arrow_map.delete_snake_both(active_index, coll_tile_map)
+				arrow_map.delete_snake_many(active_index, tile_maps)
 				# restore original snake
 				arrow_map.snakes[active_index] = active_snake
-				arrow_map.apply_snake_both(active_index, tile_map)
-				arrow_map.apply_snake_both(active_index, coll_tile_map)
+				arrow_map.apply_snake_many(active_index, tile_maps)
 				active_snake = null
 				active_index = -1
 

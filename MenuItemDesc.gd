@@ -1,3 +1,4 @@
+@abstract
 class_name MenuItemDesc
 extends Object
 
@@ -11,3 +12,6 @@ func _init(...args):
 		if prop['usage'] & PROPERTY_USAGE_SCRIPT_VARIABLE:
 			set(prop['name'], args[i])
 			i += 1
+
+@abstract func setup(container : Container,
+					 menu : Menu) -> MenuItem

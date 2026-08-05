@@ -50,6 +50,9 @@ const NEXT_CELL : Dictionary[Vector2i, ArrowCell] = {
 func space_occupied(pos : Vector2i) -> bool:
 	return occupied_by[size.x * pos.y + pos.x] >= 0
 
+func fly_at(pos : Vector2i) -> bool:
+	return occupied_by[size.x * pos.y + pos.x] == FLY_ID
+
 func get_free_direction(pos : Vector2i,
 						towards : Side,
 						gen_params : RandGenParams) -> int:
@@ -217,11 +220,15 @@ func apply_many(pos : Vector2i,
 	for tile_map in tile_maps:
 		tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
 
-func apply_fly(pos : Vector2i,
-			   _snake_part : int,
-			   _snake_index : int,
-			   _arg):
-	occupied_by[size.x * pos.y + pos.x] = FLY_ID
+func apply_many_checked(pos : Vector2i,
+						snake_part : int,
+						snake_index : int,
+						tile_maps : Array[TileMapLayer]):
+	if pos.x >= 0 and pos.x < size.x and \
+	   pos.y >= 0 and pos.y < size.y:
+		occupied_by[size.x * pos.y + pos.x] = snake_index
+		for tile_map in tile_maps:
+			tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
 
 func delete_map(pos : Vector2i,
 				_snake_part : int,
@@ -250,6 +257,14 @@ func delete_both(pos : Vector2i,
 				 tile_map : TileMapLayer):
 	occupied_by[size.x * pos.y + pos.x] = UNOCCUPIED_ID
 	tile_map.erase_cell(pos)
+
+func delete_many(pos : Vector2i,
+				 _snake_part : int,
+				 _snake_index : int,
+				 tile_maps : Array[TileMapLayer]):
+	occupied_by[size.x * pos.y + pos.x] = UNOCCUPIED_ID
+	for tile_map in tile_maps:
+		tile_map.erase_cell(pos)
 
 func delete_astar(pos : Vector2i,
 				 _snake_part : int,
@@ -302,17 +317,7 @@ func apply_snake_many(index : int, tile_maps : Array[TileMapLayer]):
 
 func delete_snake_map(index : int):
 	var snake : Snake = snakes[index]
-	if snake == DEAD_SNAKE:
-		return
 	do_apply_snake(index, delete_map)
-	snakes[index].free()
-	snakes[index] = DEAD_SNAKE
-
-func delete_snake_fly(index : int):
-	var snake : Snake = snakes[index]
-	if snake == DEAD_SNAKE:
-		return
-	do_apply_snake(index, apply_fly)
 	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
 
@@ -321,9 +326,13 @@ func delete_snake_tilemap(index : int, tile_map : TileMapLayer):
 
 func delete_snake_both(index : int, tile_map : TileMapLayer):
 	var snake : Snake = snakes[index]
-	if snake == DEAD_SNAKE:
-		return
 	do_apply_snake(index, delete_both, tile_map)
+	snakes[index].free()
+	snakes[index] = DEAD_SNAKE
+
+func delete_snake_many(index : int, tile_maps : Array[TileMapLayer]):
+	var snake : Snake = snakes[index]
+	do_apply_snake(index, delete_many, tile_maps)
 	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
 
@@ -395,6 +404,11 @@ func move_snake_both(index : int,
 					 towards : Side,
 					 tile_map : TileMapLayer):
 	do_move_snake(index, towards, apply_both, tile_map)
+
+func move_snake_many(index : int,
+					 towards : Side,
+					 tile_maps : Array[TileMapLayer]):
+	do_move_snake(index, towards, apply_many, tile_maps)
 
 func grow_snake_both(index : int,
 					 towards : Side,
@@ -548,7 +562,8 @@ func rand_snake(pos : Vector2i,
 
 	trim_snake_to_fit(index)
 
-func generate_random(gen_params : RandGenParams) -> int:
+func generate_random(gen_params : RandGenParams,
+					 tile_maps : Array[TileMapLayer]) -> int:
 	var active_snakes : int = 0
 
 	# just access occupied_by directly here because flies aren't placed yet
@@ -604,9 +619,11 @@ func generate_random(gen_params : RandGenParams) -> int:
 			chance *= gen_params.chance_mult
 
 	for i in len(snakes):
+		if snakes[i] == DEAD_SNAKE:
+			continue
 		# delete overly short snakes
 		if len(snakes[i].nextTowards) < gen_params.min_length - 1:
-			delete_snake_fly(i)
+			delete_snake_map(i)
 			active_snakes -= 1
 			pass
 		else:
@@ -617,6 +634,13 @@ func generate_random(gen_params : RandGenParams) -> int:
 		for x in size.x - 1:
 			if occupied_by[size.x * y + x] < 0:
 				occupied_by[size.x * y + x] = FLY_ID
+
+	for tile_map in tile_maps:
+		apply_flies(tile_map)
+
+	for index in len(snakes):
+		if snakes[index] != DEAD_SNAKE:
+			apply_snake_many(index, tile_maps)
 
 	return active_snakes
 
@@ -692,7 +716,7 @@ func place_fly(pos : Vector2i, tile_maps : Array[TileMapLayer]):
 		elif occupied_by[size.x * pos.y + pos.x] == FLY_ID:
 			occupied_by[size.x * pos.y + pos.x] = UNOCCUPIED_ID
 			for tile_map in tile_maps:
-				tile_map.set_cell(pos, 0, Vector2i(0, ArrowCell.EMPTY))
+				tile_map.erase_cell(pos)
 
 func get_data() -> PuzzleData:
 	return PuzzleData.get_data(size, snakes, occupied_by)

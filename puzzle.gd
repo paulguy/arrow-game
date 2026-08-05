@@ -425,6 +425,7 @@ func editor_menu():
 
 var menu_editor : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(resize_menu, "Resize"),
+#	MenuSelectionDesc.new(save_menu, "Save"),
 	MenuSelectionDesc.new(return_to_game, "Return to Editor"),
 	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
 ]

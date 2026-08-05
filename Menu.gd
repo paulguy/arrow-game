@@ -1,3 +1,4 @@
+class_name Menu
 extends Control
 
 const MAX_SEPARATION : int = 20
@@ -30,12 +31,6 @@ func _ready():
 	title_control.label_settings = header_label_settings
 	title_control.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_control.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-func change_value(desc : MenuItemDesc, item : MenuItem, amount):
-	item.value = min(max(item.value + amount, desc.min_value), desc.max_value)
-	if desc.change_func.is_valid():
-		item.value = desc.change_func.call(item.value)
-	desc.value = item.value
 
 func _process(delta : float):
 	# ugly hacks to make the menu try to fit the screen
@@ -86,11 +81,10 @@ func _process(delta : float):
 	if last_change != null:
 		last_change_time += delta
 
-		var desc : MenuValueDesc = menu_descs[last_change as MenuItem]
 		var period : float = CHANGE_PERIODS[min(len(CHANGE_PERIODS) - 1, int(last_change_time))]
 		if last_change_time - last_value_change_time >= period:
 			last_value_change_time = last_change_time
-			change_value(desc, last_change, change_mult)
+			last_change.change_value(change_mult)
 
 func clear_last_press():
 		last_change = null
@@ -135,70 +129,33 @@ func set_items(items : Array[MenuItemDesc]):
 	menu_descs = {}
 
 	for item in items:
-		var menu_item : MenuItem
-		if item is MenuSelectionDesc:
-			var menu_selection : MenuSelection = load("res://MenuSelection.tscn").instantiate()
-			container.add_child(menu_selection)
-			menu_selection.clickable.connect(&"gui_input",
-											 menu_select,
-											 ConnectFlags.CONNECT_APPEND_SOURCE_OBJECT)
-			menu_items[menu_selection.clickable] = menu_selection
-			menu_item = menu_selection
-		elif item is MenuValueDesc:
-			var menu_value : MenuValue = load("res://MenuValue.tscn").instantiate()
-			container.add_child(menu_value)
-			menu_value.value = item.value
-			menu_value.clickable_dec.connect(&"gui_input",
-											 menu_dec,
-											 ConnectFlags.CONNECT_APPEND_SOURCE_OBJECT)
-			menu_value.clickable_inc.connect(&"gui_input",
-											 menu_inc,
-											 ConnectFlags.CONNECT_APPEND_SOURCE_OBJECT)
-			menu_items[menu_value.clickable_dec] = menu_value
-			menu_items[menu_value.clickable_inc] = menu_value
-			menu_item = menu_value
+		var menu_item : MenuItem = item.setup(container, self)
 		container.move_child(menu_item, -2)
+		menu_item.desc = item
 		menu_item.label = item.label
 		menu_descs[menu_item] = item
 
 	update_heading_scale()
 	clear_size()
 
-func e_is_activate(e : InputEvent) -> bool:
+static func e_is_activate(e : InputEvent) -> bool:
 	if e is InputEventScreenTouch and \
 	   e.pressed == false:
 		return true
 	return false
 
-func e_is_pressed(e : InputEvent) -> bool:
+static func e_is_pressed(e : InputEvent) -> bool:
 	if e is InputEventScreenTouch and \
 	   e.pressed == true:
 		return true
 	return false
 
-func menu_select(e : InputEvent, c : Control):
-	if e_is_activate(e):
-		clear_last_press()
-		var item : MenuSelection = menu_items[c]
-		var desc : MenuSelectionDesc = menu_descs[item as MenuItem]
-		desc.activate_func.call()
-
-func menu_change(c : Control):
+func set_last_change(c : Control, mult : int):
 	last_change_time = 0.0
 	last_value_change_time = 0.0
-	last_change = menu_items[c]
-	var desc : MenuValueDesc = menu_descs[last_change as MenuItem]
-	change_value(desc, last_change, change_mult)
-
-func menu_dec(e : InputEvent, c : Control):
-	if e_is_pressed(e):
-		change_mult = -1
-		menu_change(c)
-
-func menu_inc(e : InputEvent, c : Control):
-	if e_is_pressed(e):
-		change_mult = 1
-		menu_change(c)
+	last_change = c
+	change_mult = mult
+	last_change.change_value(change_mult)
 
 func update_size(new_size : Vector2i):
 	size = new_size
