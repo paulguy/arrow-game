@@ -182,12 +182,14 @@ func join_selected_snake(snake_idx : int):
 func resize_puzzle(new_bounds : Rect2i):
 	arrow_map.resize_puzzle(new_bounds, [tile_map, coll_tile_map])
 
-func get_snakes() -> Array[Snake]:
-	return arrow_map.get_snakes()
+func place_fly(pos : Vector2i):
+	arrow_map.place_fly(pos, [tile_map, coll_tile_map])
 
-func set_snakes(newsnakes : Array[Snake]):
-	arrow_map.set_snakes(newsnakes, tile_map)
-	arrow_map.apply_tilemap_full(coll_tile_map)
+func get_data() -> PuzzleData:
+	return arrow_map.get_data()
+
+func set_data(data : PuzzleData):
+	arrow_map.set_data(data, [tile_map, coll_tile_map])
 	active_snake = null
 	active_snakes = len(arrow_map.snakes)
 

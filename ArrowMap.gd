@@ -4,9 +4,9 @@ extends Object
 const UNOCCUPIED_ID : int = -1
 const FLY_ID : int = -2
 
-var DEAD_SNAKE : Snake = Snake.new(Vector2i.MIN, -1, SIDE_TOP)
+static var DEAD_SNAKE : Snake = Snake.new(Vector2i.MIN, -1, SIDE_TOP)
 var size : Vector2i
-var snakes : Array[Snake]
+var snakes : Array[Snake] = []
 var occupied_by : PackedInt32Array
 
 const SIDE_NAME : Dictionary[Side, String] = {
@@ -620,25 +620,44 @@ func generate_random(gen_params : RandGenParams) -> int:
 
 	return active_snakes
 
-func clear():
+func clear(size : Vector2i):
+	self.size = size
 	occupied_by = PackedInt32Array()
 	occupied_by.resize(size.x * size.y)
 	occupied_by.fill(UNOCCUPIED_ID)
+	for snake in snakes:
+		if snake != null and snake != DEAD_SNAKE:
+			snake.free()
 	snakes = []
 
 func _init(size : Vector2i):
-	self.size = size
-	clear()
+	clear(size)
 
 func resize_puzzle(new_bounds : Rect2i, tile_maps : Array[TileMapLayer]):
 	# just clear any tilemaps entirely
 	for tile_map in tile_maps:
 		tile_map.clear()
 
+	var old_occupied_by : PackedInt32Array = occupied_by
+	var old_size : Vector2i = size
+
 	occupied_by = PackedInt32Array()
 	occupied_by.resize(new_bounds.size.x * new_bounds.size.y)
 	occupied_by.fill(UNOCCUPIED_ID)
 	size = new_bounds.size
+
+	# copy flies
+	for y in new_bounds.size.y:
+		if new_bounds.position.y + y < 0 or \
+		   new_bounds.position.y + y >= old_size.y:
+			continue
+		for x in new_bounds.size.x:
+			if new_bounds.position.x + x >= 0 and \
+			   new_bounds.position.x + x < old_size.x and \
+			   old_occupied_by[old_size.x * (new_bounds.position.y + y) + new_bounds.position.x + x] == FLY_ID:
+				occupied_by[size.x * y + x] = FLY_ID
+				for tile_map in tile_maps:
+					tile_map.set_cell(Vector2i(x, y), 0, Vector2i(0, ArrowCell.FLY))
 
 	# trim snakes to new size
 	for i in len(snakes):
@@ -650,39 +669,44 @@ func resize_puzzle(new_bounds : Rect2i, tile_maps : Array[TileMapLayer]):
 			# if they weren't trimmed, just place them on the new tilemap
 			apply_snake_many(i, tile_maps)
 
-func apply_tilemap_full(tile_map : TileMapLayer):
-	tile_map.clear()
-
-	for i in len(snakes):
-		apply_snake_tilemap(i, tile_map)
+func apply_flies(tile_map : TileMapLayer):
 	for y in size.y:
 		for x in size.x:
 			if occupied_by[size.x * y + x] == FLY_ID:
 				tile_map.set_cell(Vector2i(x, y), 0, Vector2i(0, ArrowCell.FLY))
 
-	tile_map.notify_runtime_tile_data_update()
-
 func select_snake(pos : Vector2i) -> int:
-	if pos.x < 0 or pos.y < 0 or \
-	   pos.x >= size.x or pos.y >= size.y or \
+	if pos.x < 0 or pos.x >= size.x or \
+	   pos.y < 0 or pos.y >= size.y or \
 	   not space_occupied(pos):
 		return -1
 	return occupied_by[size.x * pos.y + pos.x]
 
-func get_snakes() -> Array[Snake]:
-	var newsnakes : Array[Snake] = []
-	for snake in snakes:
-		if snake != DEAD_SNAKE:
-			# deep copy the whole array
-			newsnakes.append(snake.copy())
+func place_fly(pos : Vector2i, tile_maps : Array[TileMapLayer]):
+	if pos.x >= 0 and pos.x < size.x and \
+	   pos.y >= 0 and pos.y < size.y:
+		if occupied_by[size.x * pos.y + pos.x] == UNOCCUPIED_ID:
+			occupied_by[size.x * pos.y + pos.x] = FLY_ID
+			for tile_map in tile_maps:
+				tile_map.set_cell(pos, 0, Vector2i(0, ArrowCell.FLY))
+		elif occupied_by[size.x * pos.y + pos.x] == FLY_ID:
+			occupied_by[size.x * pos.y + pos.x] = UNOCCUPIED_ID
+			for tile_map in tile_maps:
+				tile_map.set_cell(pos, 0, Vector2i(0, ArrowCell.EMPTY))
 
-	return newsnakes
+func get_data() -> PuzzleData:
+	return PuzzleData.get_data(size, snakes, occupied_by)
 
-func set_snakes(newsnakes : Array[Snake], tile_map : TileMapLayer = null):
-	clear()
-	snakes = newsnakes
+func set_data(data : PuzzleData, tile_maps : Array[TileMapLayer] = []):
+	clear(data.size)
+
+	snakes = data.set_data(occupied_by)
+
+	for tile_map in tile_maps:
+		apply_flies(tile_map)
+
 	for index in len(snakes):
-		if tile_map == null:
+		if len(tile_maps) == 0:
 			apply_snake_map(index)
 		else:
-			apply_snake_both(index, tile_map)
+			apply_snake_many(index, tile_maps)

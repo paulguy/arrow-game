@@ -48,7 +48,8 @@ const ACTION_NAMES : Array[String] = [
 	"Select",
 	"Add",
 	"Split",
-	"Join"
+	"Join",
+	"Flies"
 ]
 
 enum Action {
@@ -56,6 +57,7 @@ enum Action {
 	ADD,
 	SPLIT,
 	JOIN,
+	FLIES,
 	MAX
 }
 
@@ -78,7 +80,7 @@ var last_drag : int = 0
 var last_size : Vector2i
 var menu_display : bool = false
 var menu : Control = null
-var backup_snakes : Array[Snake]
+var puzzle_data : PuzzleData = null
 # whether this was started from a new game or the editor option
 var play_mode : bool = true
 # whether the editor should display (or test mode)
@@ -87,7 +89,10 @@ var editor : bool = false:
 		if mode:
 			if not editor:
 				# restore the list of snakes
-				arrow_view.set_snakes(backup_snakes)
+				if puzzle_data != null:
+					arrow_view.set_data(puzzle_data)
+					puzzle_data.free()
+					puzzle_data = null
 				$"Overlay/Menu/Mode/Margins/Text".text = "Test"
 				for item in EDITOR_BUTTONS:
 					get_node(NodePath("Overlay/Menu/%s" % item)).visible = true
@@ -95,7 +100,7 @@ var editor : bool = false:
 		else:
 			if editor:
 				# backup the list of snakes
-				backup_snakes = arrow_view.get_snakes()
+				puzzle_data = arrow_view.get_data()
 				$"Overlay/Menu/Mode/Margins/Text".text = "Edit"
 				# update the collisions for flies
 				arrow_view.update_astar()
@@ -278,6 +283,10 @@ func ui_event(e : InputEvent, c : Control):
 				elif action == Action.JOIN:
 					if snake_idx >= 0:
 						arrow_view.join_selected_snake(snake_idx)
+				elif action == Action.FLIES:
+					if snake_idx < 0:
+						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
+						arrow_view.place_fly(pos)
 				else:
 					# Default action: select
 					arrow_view.select_snake(snake_idx)
@@ -427,11 +436,12 @@ func resize_menu():
 	menu_resize[3].value = map_size.y
 	update_menu("Resize", menu_resize)
 
+# 255 is a position tag for snake list termination
 var menu_resize : Array[MenuItemDesc] = [
-	MenuValueDesc.new(0, 0, 200, null, "Left"),
-	MenuValueDesc.new(0, 0, 200, null, "Top"),
-	MenuValueDesc.new(0, 1, 200, null, "New Width"),
-	MenuValueDesc.new(0, 1, 200, null, "New Height"),
+	MenuValueDesc.new(0, -254, 254, null, "Left"),
+	MenuValueDesc.new(0, -254, 254, null, "Top"),
+	MenuValueDesc.new(0, 1, 254, null, "New Width"),
+	MenuValueDesc.new(0, 1, 254, null, "New Height"),
 	MenuSelectionDesc.new(resize, "Resize"),
 	MenuSelectionDesc.new(return_to_game, "Return to Editor")
 ]
