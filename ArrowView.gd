@@ -234,7 +234,7 @@ func pop_random_free_fly() -> Array[Vector2i]:
 	# select within borders, astar grid is from -1,-1 to size+2, size+2
 	var from : Vector2i = Vector2i(randi_range(0, astar.region.end.x - 2),
 								   randi_range(0, astar.region.end.y - 2))
-	if tile_map.get_cell_atlas_coords(from).y != ArrowMap.ArrowCell.FLY:
+	if arrow_map.fly_at(from):
 		# if not a fly, return
 		return []
 

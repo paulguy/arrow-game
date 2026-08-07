@@ -1,5 +1,5 @@
 class_name Menu
-extends Control
+extends ScrollContainer
 
 signal font_size_changed(amount : int)
 
@@ -16,16 +16,20 @@ static var header_label_settings : LabelSettings = load("res://DefaultLabel.tres
 var default_label_size : int = header_label_settings.font_size
 var title_control : Label
 
+var font_size : float = float(header_label_settings.font_size)
+var last_rects : Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
+var last_font_change : float = 0.0
+
 var menu_descs : Dictionary[MenuItem, MenuItemDesc] = {}
 var last_change : MenuValue = null
 var last_change_time : float = 0.0
 var last_value_change_time : float = 0.0
 var change_mult : int = 0
-
-var last_sizes : Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
-var last_screen_size : Vector2i = Vector2i.ZERO
-var last_font_sizes : Array[int] = [0, header_label_settings.font_size]
-var size_seek : int = 0
+var scrollable : bool:
+	set(val):
+		if val:
+			horizontal_scroll_mode = SCROLL_MODE_DISABLED
+		scrollable = val
 
 func _ready():
 	title_control = Label.new()
@@ -33,17 +37,11 @@ func _ready():
 	title_control.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_control.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-func change_font_size(amount : int):
-	if header_label_settings.font_size + amount == last_font_sizes[0]:
-		size_seek = 0
-	else:
-		header_label_settings.font_size += amount
-		font_size_changed.emit(header_label_settings.font_size)
-		last_font_sizes[0] = last_font_sizes[1]
-		last_font_sizes[1] = header_label_settings.font_size
-
-func clear_last_font_size():
-	last_font_sizes[0] = 0
+func change_font_size(amount : float):
+	last_font_change = amount
+	font_size *= pow(1.2, amount)
+	header_label_settings.font_size = int(font_size)
+	font_size_changed.emit(header_label_settings.font_size)
 
 func _process(delta : float):
 	# ugly hacks to make the menu try to fit the screen
@@ -58,32 +56,50 @@ func _process(delta : float):
 	else:
 		screen_rect.y /= 2.0
 
-	if screen_rect != last_screen_size or \
-	   rect != last_sizes[0]:
-		if rect.x > screen_rect.x or rect.y > screen_rect.y:
-			# if any axis is larger, try to shrink
-			size_seek = -1
-			clear_last_font_size()
-		elif rect.x < screen_rect.x and rect.y < screen_rect.y:
-			# if both axes are smaller, try to grow
-			size_seek = 1
-			clear_last_font_size()
-		last_screen_size = screen_rect
-		last_sizes[0] = last_sizes[1]
-		last_sizes[1] = rect
+	# font size can be adjusted but whether it fits or not won't
+	# be known until the next frame is processed.  Due to the way
+	# fonts can be at different sizes, there's also no continuous
+	# function to determine font size and menu rect size.  Worse,
+	# a new font atlas and glyphs must be rendered at each size
+	# change, ruining performance at large scales.
+	# screen size and rect size can change at any moment, even
+	# without changing the menu items.
 
-	if size_seek < 0:
-		if rect.x > screen_rect.x or rect.y > screen_rect.y:
-			# if any axis is larger, try to shrink
-			change_font_size(-1)
+	# this sucks and it's been redone several times and it's
+	# probably still broken in some edge case
+
+	if rect != last_rects[0]:
+		last_rects[0] = last_rects[1]
+		last_rects[1] = rect
+
+		if scrollable:
+			if rect.x > screen_rect.x:
+				# rect too big, shrink
+				var diff : float = rect.x - screen_rect.x
+				if last_font_change > 0.0:
+					change_font_size(-last_font_change)
+					last_font_change = 0
+				else:
+					change_font_size(-diff / screen_rect.x)
+			elif rect.x < screen_rect.x:
+				# rect too small, grow
+				var diff : float = screen_rect.x - rect.x
+				change_font_size(diff / screen_rect.x)
 		else:
-			size_seek = 0
-	elif size_seek > 0:
-		if rect.x < screen_rect.x and rect.y < screen_rect.y:
-			# if both axes are smaller, try to grow
-			change_font_size(1)
-		else:
-			size_seek = 0
+			if rect.x > screen_rect.x or rect.y > screen_rect.y:
+				# rect too big, shrink
+				var largest : int = (rect - Vector2(screen_rect)).max_axis_index()
+				var diff : float = rect[largest] - screen_rect[largest]
+				if last_font_change > 0.0:
+					change_font_size(-last_font_change)
+					last_font_change = 0
+				else:
+					change_font_size(-diff / screen_rect[largest])
+			elif rect.x < screen_rect.x and rect.y < screen_rect.y:
+				# rect too small, grow
+				var largest : int = (Vector2(screen_rect) - rect).max_axis_index()
+				var diff : float = screen_rect[largest] - rect[largest]
+				change_font_size(diff / screen_rect[largest])
 
 	if last_change != null:
 		last_change_time += delta
@@ -121,7 +137,6 @@ func set_heading(c):
 	if orig_c == filler:
 		orig_c.queue_free()
 		filler = null
-	clear_last_font_size()
 	update_heading_scale()
 
 func set_items(items : Array[MenuItemDesc]):
@@ -140,7 +155,6 @@ func set_items(items : Array[MenuItemDesc]):
 
 	# don't change font size, just signal
 	change_font_size(0)
-	clear_last_font_size()
 	update_heading_scale()
 
 static func e_is_activate(e : InputEvent) -> bool:

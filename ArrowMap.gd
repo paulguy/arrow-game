@@ -721,12 +721,14 @@ func place_fly(pos : Vector2i, tile_maps : Array[TileMapLayer]):
 func get_data() -> PuzzleData:
 	return PuzzleData.get_data(size, snakes, occupied_by)
 
-func set_data(data : PuzzleData, tile_maps : Array[TileMapLayer] = []):
+func set_data(data : PuzzleData,
+			  tile_maps : Array[TileMapLayer] = []):
 	clear(data.size)
 
 	snakes = data.set_data(occupied_by)
 
 	for tile_map in tile_maps:
+		tile_map.clear()
 		apply_flies(tile_map)
 
 	for index in len(snakes):

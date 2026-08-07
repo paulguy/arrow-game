@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://d2t4wuybi3skk"]
+
+[ext_resource type="Script" uid="uid://dcbu3xnyqp3o2" path="res://MenuImageSelection.gd" id="1_1xih0"]
+[ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="2_cnohn"]
+
+[node name="HBoxContainer" type="HBoxContainer" unique_id=1568702876]
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_1xih0")
+
+[node name="Image Container" parent="." unique_id=728411159 instance=ExtResource("2_cnohn")]
+layout_mode = 2
+
+[node name="Label Container" parent="." unique_id=1060619221 instance=ExtResource("2_cnohn")]
+layout_mode = 2

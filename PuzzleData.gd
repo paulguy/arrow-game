@@ -1,6 +1,9 @@
 class_name PuzzleData
 extends Object
 
+const FLY_COLOR : Color = Color.BLACK
+const SNAKE_COLOR : Color = Color.WHITE
+
 var size : Vector2i
 var snakes : Array[Snake]
 var flies : PackedByteArray
@@ -36,13 +39,13 @@ static func get_data(size : Vector2i,
 				   (128 if occupied_by[i2 + 7] == ArrowMap.FLY_ID else 0)
 	if size.x * size.y % 8 > 0:
 		# pack any tail bits in
-		flies[-1] = ( 1 if size.x * size.y / 8 * 8 + 0 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 0] == ArrowMap.FLY_ID else 0) | \
-					( 2 if size.x * size.y / 8 * 8 + 1 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 1] == ArrowMap.FLY_ID else 0) | \
-					( 4 if size.x * size.y / 8 * 8 + 2 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 2] == ArrowMap.FLY_ID else 0) | \
-					( 8 if size.x * size.y / 8 * 8 + 3 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 3] == ArrowMap.FLY_ID else 0) | \
-					(16 if size.x * size.y / 8 * 8 + 4 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 4] == ArrowMap.FLY_ID else 0) | \
-					(32 if size.x * size.y / 8 * 8 + 5 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 5] == ArrowMap.FLY_ID else 0) | \
-					(64 if size.x * size.y / 8 * 8 + 6 < len(occupied_by) - 1 and occupied_by[size.x * size.y / 8 * 8 + 6] == ArrowMap.FLY_ID else 0)
+		flies[-1] = ( 1 if size.x * size.y / 8 * 8 + 0 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 0] == ArrowMap.FLY_ID else 0) | \
+					( 2 if size.x * size.y / 8 * 8 + 1 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 1] == ArrowMap.FLY_ID else 0) | \
+					( 4 if size.x * size.y / 8 * 8 + 2 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 2] == ArrowMap.FLY_ID else 0) | \
+					( 8 if size.x * size.y / 8 * 8 + 3 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 3] == ArrowMap.FLY_ID else 0) | \
+					(16 if size.x * size.y / 8 * 8 + 4 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 4] == ArrowMap.FLY_ID else 0) | \
+					(32 if size.x * size.y / 8 * 8 + 5 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 5] == ArrowMap.FLY_ID else 0) | \
+					(64 if size.x * size.y / 8 * 8 + 6 < len(occupied_by) and occupied_by[size.x * size.y / 8 * 8 + 6] == ArrowMap.FLY_ID else 0)
 
 	return PuzzleData.new(size, newsnakes, flies)
 
@@ -148,7 +151,6 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 	while true:
 		# get position
 		snakepos.x = data[datapos]
-		prints(snakepos.x, "%02x" % snakepos.x)
 		# 255 is the magic byte for the last snake
 		if snakepos.x == 255:
 			datapos += 1
@@ -166,10 +168,63 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 			nextTowards.append(get_snakedata(data, datapos * 4 + i + 1))
 		# advance the number of bytes needed for nextTowards including any tail byte
 		datapos += get_snakedata_len(len(nextTowards) + 1)
-		print(datapos)
 
 		snakes.append(Snake.new(snakepos, 1, headTowards))
 		snakes[-1].nextTowards = nextTowards
 
 	# the rest of the data is flies
 	return PuzzleData.new(size, snakes, data.slice(datapos))
+
+func get_preview() -> Image:
+	var image : Image = Image.create_empty(size.x, size.y, false, Image.Format.FORMAT_RGBA8)
+	var fly_color : Color = FLY_COLOR
+	fly_color.a = 0
+	var snake_color : int = SNAKE_COLOR.to_rgba32()
+	image.fill(fly_color)
+	var data : PackedByteArray = image.get_data()
+
+	for i in size.x * size.y / 8:
+		var i2 : int = i * 8
+		if flies[i] &   1:
+			data[(i2 + 0) * 4 + 3] = 255
+		if flies[i] &   2:
+			data[(i2 + 1) * 4 + 3] = 255
+		if flies[i] &   4:
+			data[(i2 + 2) * 4 + 3] = 255
+		if flies[i] &   8:
+			data[(i2 + 3) * 4 + 3] = 255
+		if flies[i] &  16:
+			data[(i2 + 4) * 4 + 3] = 255
+		if flies[i] &  32:
+			data[(i2 + 5) * 4 + 3] = 255
+		if flies[i] &  64:
+			data[(i2 + 6) * 4 + 3] = 255
+		if flies[i] & 128:
+			data[(i2 + 7) * 4 + 3] = 255
+	if size.x * size.y % 8 > 0:
+		# unpack any tail bits
+		if size.x * size.y / 8 * 8 + 0 < len(data) and flies[-1] &  1:
+			data[(size.x * size.y / 8 * 8 + 0) * 4 + 3] = 255
+		if size.x * size.y / 8 * 8 + 1 < len(data) and flies[-1] &  2:
+			data[(size.x * size.y / 8 * 8 + 1) * 4 + 3] = 255
+		if size.x * size.y / 8 * 8 + 2 < len(data) and flies[-1] &  4:
+			data[(size.x * size.y / 8 * 8 + 2) * 4 + 3] = 255
+		if size.x * size.y / 8 * 8 + 3 < len(data) and flies[-1] &  8:
+			data[(size.x * size.y / 8 * 8 + 3) * 4 + 3] = 255
+		if size.x * size.y / 8 * 8 + 4 < len(data) and flies[-1] & 16:
+			data[(size.x * size.y / 8 * 8 + 4) * 4 + 3] = 255
+		if size.x * size.y / 8 * 8 + 5 < len(data) and flies[-1] & 32:
+			data[(size.x * size.y / 8 * 8 + 5) * 4 + 3] = 255
+		if size.x * size.y / 8 * 8 + 6 < len(data) and flies[-1] & 64:
+			data[(size.x * size.y / 8 * 8 + 6) * 4 + 3] = 255
+
+	for snake in snakes:
+		var pos : Vector2i = snake.pos
+		data.encode_u32((size.x * pos.y + pos.x) * 4, snake_color)
+		for towards in snake.nextTowards:
+			pos += Snake.UPDATE_POS[towards]
+			data.encode_u32((size.x * pos.y + pos.x) * 4, snake_color)
+
+	image.set_data(size.x, size.y, false, Image.Format.FORMAT_RGBA8, data)
+
+	return image
