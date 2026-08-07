@@ -77,7 +77,7 @@ var arrow_view : ArrowView = null
 var tile_size : Vector2i
 var map_size : Vector2i
 var view_pos : Vector2 = Vector2.ZERO
-var view_zoom : float = 0.0
+var view_zoom : float = 1.0
 var last_drag : int = 0
 var last_size : Vector2i
 var menu_display : bool = false
@@ -218,11 +218,8 @@ func update_size(new_size : Vector2i):
 	flies_viewport.uv = polygon
 	shade.polygon = polygon
 
-	if view_zoom == 0.0:
-		fit_puzzle_to_screen()
-
 	if menu != null:
-		menu.size = view_size
+		#menu.size = view_size
 		menu.update_size(view_size)
 
 	overlay.size = view_size

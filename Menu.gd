@@ -12,6 +12,8 @@ const CHANGE_PERIODS : Array[float] = [
 @onready var container : VBoxContainer = $"Container"
 @onready var filler : Control = $"Container/Heading Filler"
 
+var last_size : Vector2i = Vector2i.ZERO
+
 static var header_label_settings : LabelSettings = load("res://DefaultLabel.tres")
 var default_label_size : int = header_label_settings.font_size
 var title_control : Label
@@ -25,11 +27,7 @@ var last_change : MenuValue = null
 var last_change_time : float = 0.0
 var last_value_change_time : float = 0.0
 var change_mult : int = 0
-var scrollable : bool:
-	set(val):
-		if val:
-			horizontal_scroll_mode = SCROLL_MODE_DISABLED
-		scrollable = val
+var scrollable : bool
 
 func _ready():
 	title_control = Label.new()
@@ -44,6 +42,9 @@ func change_font_size(amount : float):
 	font_size_changed.emit(header_label_settings.font_size)
 
 func _process(delta : float):
+	if Vector2i(size) != last_size:
+		size = last_size
+
 	# ugly hacks to make the menu try to fit the screen
 	var rect : Vector2 = container.get_rect().size
 	var screen_rect : Vector2i = size
@@ -77,8 +78,9 @@ func _process(delta : float):
 				# rect too big, shrink
 				var diff : float = rect.x - screen_rect.x
 				if last_font_change > 0.0:
+					# grew past, undo last change
 					change_font_size(-last_font_change)
-					last_font_change = 0
+					last_font_change = 0.0
 				else:
 					change_font_size(-diff / screen_rect.x)
 			elif rect.x < screen_rect.x:
@@ -91,8 +93,9 @@ func _process(delta : float):
 				var largest : int = (rect - Vector2(screen_rect)).max_axis_index()
 				var diff : float = rect[largest] - screen_rect[largest]
 				if last_font_change > 0.0:
+					# grew past, undo last change
 					change_font_size(-last_font_change)
-					last_font_change = 0
+					last_font_change = 0.0
 				else:
 					change_font_size(-diff / screen_rect[largest])
 			elif rect.x < screen_rect.x and rect.y < screen_rect.y:
@@ -129,6 +132,9 @@ func set_heading(c):
 	if c is String:
 		title_control.text = c
 		c = title_control
+	elif c is TextureRect:
+		var title_logo : TextureRect = c as TextureRect
+		title_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var orig_c : Control = container.get_child(0)
 	container.remove_child(orig_c)
 	container.add_child(c)
@@ -177,7 +183,19 @@ func set_last_change(c : Control, mult : int):
 	last_change.change_value(change_mult)
 
 func update_size(new_size : Vector2i):
-	size = new_size
+	last_size = new_size
+	var heading : Control = container.get_child(0)
+	if heading is TextureRect:
+		var title_logo : TextureRect = heading as TextureRect
+		var texsize : Vector2i = title_logo.texture.get_size()
+		var texaspect : float = texsize.x / texsize.y
+		var headeraspect : float = last_size.x / (last_size.y / 2.0)
+		if texaspect > headeraspect:
+			title_logo.custom_minimum_size = Vector2(last_size.x, -1.0)
+			title_logo.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+		else:
+			title_logo.custom_minimum_size = Vector2(-1.0, last_size.y / 2.0)
+			title_logo.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 
 func destroy():
 	header_label_settings.font_size = default_label_size

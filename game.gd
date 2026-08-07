@@ -9,7 +9,7 @@ const MAX_LENGTH : int = 100
 @onready var background : Polygon2D = $Background
 
 var last_size : Vector2i = Vector2i.ZERO
-var menu : Control = null
+var menu : Menu = null
 var title_logo : TextureRect = null
 var puzzle : Node2D = null
 var gen_params : RandGenParams = RandGenParams.new()
@@ -22,17 +22,16 @@ func make_puzzle(editor : bool):
 	puzzle = load("res://puzzle.tscn").instantiate()
 	puzzle.play_mode = not editor
 	add_child(puzzle)
+	puzzle.update_size(last_size)
 	puzzle.set_puzzle_size(puzzle_size)
 	# puzzle size needs to have been set
 	puzzle.editor = editor
-	puzzle.update_size(last_size)
 	puzzle.connect(&"puzzle_finished", puzzle_finished)
 
 func update_sizes():
 	background.update_size(last_size)
 	if menu != null:
 		menu.update_size(last_size)
-		title_logo.custom_minimum_size = Vector2(last_size.x, last_size.y / 2.0)
 	if puzzle != null:
 		puzzle.update_size(last_size)
 
@@ -52,9 +51,9 @@ func main_menu():
 	# logo control needs to be recreated each time for reasons
 	title_logo = TextureRect.new()
 	title_logo.texture = load("res://title.png")
-	title_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	menu.set_heading(title_logo)
 	menu.set_items(menu_main)
+	menu.update_size(last_size)
 
 func new_game():
 	# kinda hacky

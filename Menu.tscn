@@ -8,13 +8,13 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_scroll_mode = 0
 script = ExtResource("1_uubjt")
 
 [node name="Container" type="VBoxContainer" parent="." unique_id=1358110058]
 layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
 theme_override_constants/separation = 5
-alignment = 2
 metadata/_edit_use_anchors_ = true
 
 [node name="Heading Filler" type="Control" parent="Container" unique_id=1770414235]
