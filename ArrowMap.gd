@@ -47,6 +47,13 @@ const NEXT_CELL : Dictionary[Vector2i, ArrowCell] = {
 	Vector2i(SIDE_RIGHT, SIDE_RIGHT): ArrowCell.LINE_H
 }
 
+const HEAD_PIECE : Dictionary[Side, ArrowCell] = {
+	SIDE_TOP: ArrowCell.ARROW_T,
+	SIDE_BOTTOM: ArrowCell.ARROW_B,
+	SIDE_LEFT: ArrowCell.ARROW_L,
+	SIDE_RIGHT: ArrowCell.ARROW_R
+}
+
 func space_occupied(pos : Vector2i) -> bool:
 	return occupied_by[size.x * pos.y + pos.x] >= 0
 
@@ -184,6 +191,8 @@ func get_free_direction(pos : Vector2i,
 		return SIDE_LEFT
 	return SIDE_RIGHT
 
+# I hate that there are so many of these functions here
+
 func apply_map(pos : Vector2i,
 			   _snake_part : int,
 			   snake_index : int,
@@ -204,6 +213,14 @@ func apply_tilemap(pos : Vector2i,
 				   _snake_index : int,
 				   tile_map : TileMapLayer):
 	tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
+
+func apply_tilemap_checked(pos : Vector2i,
+						   snake_part : int,
+						   _snake_index : int,
+						   tile_map : TileMapLayer):
+	if pos.x >= 0 and pos.x < size.x and \
+	   pos.y >= 0 and pos.y < size.y:
+		tile_map.set_cell(pos, 0, Vector2i(0, snake_part))
 
 func apply_both(pos : Vector2i,
 				snake_part : int,
@@ -266,6 +283,17 @@ func delete_many(pos : Vector2i,
 	for tile_map in tile_maps:
 		tile_map.erase_cell(pos)
 
+func delete_many_checked(pos : Vector2i,
+						 _snake_part : int,
+						 _snake_index : int,
+						 tile_maps : Array[TileMapLayer]):
+	# do nothing if it's out of range
+	if pos.x >= 0 and pos.x < size.x and \
+	   pos.y >= 0 and pos.y < size.y:
+		occupied_by[size.x * pos.y + pos.x] = UNOCCUPIED_ID
+		for tile_map in tile_maps:
+			tile_map.erase_cell(pos)
+
 func delete_astar(pos : Vector2i,
 				 _snake_part : int,
 				 _snake_index : int,
@@ -278,15 +306,7 @@ func do_apply_snake(index : int,
 	var snake : Snake = snakes[index]
 	var pos : Vector2i = snake.pos
 
-	match snake.headTowards:
-		SIDE_TOP:
-			action.call(pos, ArrowCell.ARROW_T, index, action_arg)
-		SIDE_BOTTOM:
-			action.call(pos, ArrowCell.ARROW_B, index, action_arg)
-		SIDE_LEFT:
-			action.call(pos, ArrowCell.ARROW_L, index, action_arg)
-		SIDE_RIGHT:
-			action.call(pos, ArrowCell.ARROW_R, index, action_arg)
+	action.call(pos, HEAD_PIECE[snake.headTowards], index, action_arg)
 
 	if len(snake.nextTowards) == 0:
 		pass
@@ -309,6 +329,9 @@ func apply_snake_map_checked(index : int):
 func apply_snake_tilemap(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, apply_tilemap, tile_map)
 
+func apply_snake_tilemap_checked(index : int, tile_map : TileMapLayer):
+	do_apply_snake(index, apply_tilemap_checked, tile_map)
+
 func apply_snake_both(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, apply_both, tile_map)
 
@@ -316,7 +339,6 @@ func apply_snake_many(index : int, tile_maps : Array[TileMapLayer]):
 	do_apply_snake(index, apply_many, tile_maps)
 
 func delete_snake_map(index : int):
-	var snake : Snake = snakes[index]
 	do_apply_snake(index, delete_map)
 	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
@@ -325,16 +347,19 @@ func delete_snake_tilemap(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, delete_tilemap, tile_map)
 
 func delete_snake_both(index : int, tile_map : TileMapLayer):
-	var snake : Snake = snakes[index]
 	do_apply_snake(index, delete_both, tile_map)
 	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
 
 func delete_snake_many(index : int, tile_maps : Array[TileMapLayer]):
-	var snake : Snake = snakes[index]
 	do_apply_snake(index, delete_many, tile_maps)
 	snakes[index].free()
 	snakes[index] = DEAD_SNAKE
+
+func delete_snake_many_checked(index : int, tile_maps : Array[TileMapLayer]):
+	# this is only used for split snakes, it'll be deleted later
+	# but the original snake object needs to remain until then
+	do_apply_snake(index, delete_many_checked, tile_maps)
 
 func delete_snake_astar(index : int, astar : AStarGrid2D):
 	do_apply_snake(index, delete_astar, astar)
@@ -353,15 +378,7 @@ func place_head(pos : Vector2i,
 				towards : Side,
 				action : Callable,
 				action_arg):
-	match towards:
-		SIDE_TOP:
-			action.call(pos, ArrowCell.ARROW_T, index, action_arg)
-		SIDE_BOTTOM:
-			action.call(pos, ArrowCell.ARROW_B, index, action_arg)
-		SIDE_LEFT:
-			action.call(pos, ArrowCell.ARROW_L, index, action_arg)
-		SIDE_RIGHT:
-			action.call(pos, ArrowCell.ARROW_R, index, action_arg)
+	action.call(pos, HEAD_PIECE[towards], index, action_arg)
 
 func do_move_snake(index : int,
 				   towards : Side,
@@ -463,23 +480,17 @@ func slice_map_snake(snake : Snake,
 		# reuse the original snake index
 		snakes[index] = newsnake
 		# lay the new snake on to the maps
-		if len(tile_maps) == 0:
-			apply_snake_map(index)
-		else:
-			apply_snake_many(index, tile_maps)
+		apply_snake_many(index, tile_maps)
 		return true
 	else:
 		snakes.append(newsnake)
-		if len(tile_maps) == 0:
-			apply_snake_map(len(snakes) - 1)
-		else:
-			apply_snake_many(len(snakes) - 1, tile_maps)
+		apply_snake_many(len(snakes) - 1, tile_maps)
 
 	return false
 
 func trim_snake_to_fit(index : int, tile_maps : Array[TileMapLayer] = []) -> bool:
 	var trimmed : bool = false
-	var fully_out : bool = true
+	var fully_out : bool = false
 
 	var snake : Snake = snakes[index]
 	# find if the snake is off the screen and split it
@@ -490,6 +501,7 @@ func trim_snake_to_fit(index : int, tile_maps : Array[TileMapLayer] = []) -> boo
 	if bodypos.x < 0 or bodypos.x >= size.x or \
 	   bodypos.y < 0 or bodypos.y >= size.y:
 		# if already out of bounds, the head is not the first piece
+		fully_out = true
 		first = -1
 
 	for i in len(snake.nextTowards):
@@ -502,28 +514,28 @@ func trim_snake_to_fit(index : int, tile_maps : Array[TileMapLayer] = []) -> boo
 				# i counts tail pieces so it's 1 less than the snake position
 				# but this i is 1 out of bounds so it's 1 more than it should be
 				# so it cancels out
+				if not used_index:
+					# only delete once
+					delete_snake_many_checked(index, tile_maps)
 				used_index = slice_map_snake(snake, index, first, i, tile_maps, used_index)
 				trimmed = true
 				first = -1
-		elif i == len(snake.nextTowards) - 1:
-			# end of snake
-			if first != -1:
-				# i counts tail pieces so it's 1 less than it should be
-				used_index = slice_map_snake(snake, index, first, i + 1, tile_maps, used_index)
-				trimmed = true
-				first = -1
 		else:
-			fully_out = false
 			# in bounds
-			if i == len(snake.nextTowards) - 1:
-				# snake poking into bounds
-				# same note about i as above
-				used_index = slice_map_snake(snake, index, first, i + 1, tile_maps, used_index)
-				trimmed = true
-			elif first == -1:
-				# just transitioned in bounds, so mark the first i
-				# 0 is the head and i counts body pieces
-				first = i + 1
+			fully_out = false
+			if first == -1:
+				if i == len(snake.nextTowards) - 1:
+					# snake poking into bounds
+					# same note about i as above
+					if not used_index:
+						# only delete once
+						delete_snake_many_checked(index, tile_maps)
+					used_index = slice_map_snake(snake, index, i + 1, i + 1, tile_maps, used_index)
+					trimmed = true
+				else:
+					# just transitioned in bounds, so mark the first i
+					# 0 is the head and i counts body pieces
+					first = i + 1
 
 	if fully_out:
 		snakes[index].free()
@@ -545,7 +557,7 @@ func rand_snake(pos : Vector2i,
 				gen_params : RandGenParams):
 	var snake : Snake = Snake.new(pos, length, towards)
 	var index : int = add_snake(snake)
-	do_apply_snake(index, apply_map_checked)
+	apply_snake_map_checked(index)
 	for i in initial:
 		if space_occupied(snake.pos + Snake.UPDATE_POS[towards]):
 			if i == 0:
@@ -553,12 +565,12 @@ func rand_snake(pos : Vector2i,
 				snake.trim(1)
 				return
 			break
-		do_move_snake(index, towards, apply_map_checked)
+		move_snake_map_checked(index, towards)
 	for i in length - 2:
 		var next : int = get_free_direction(snake.pos, snake.headTowards, gen_params)
 		if next < 0:
 			break
-		do_move_snake(index, next as Side, apply_map_checked)
+		move_snake_map_checked(index, next as Side)
 
 	trim_snake_to_fit(index)
 
@@ -630,8 +642,8 @@ func generate_random(gen_params : RandGenParams,
 			# snakes are coming in from the edges, so point them back towards the edges
 			snakes[i].reverse()
 
-	for y in size.y - 1:
-		for x in size.x - 1:
+	for y in size.y:
+		for x in size.x:
 			if occupied_by[size.x * y + x] < 0:
 				occupied_by[size.x * y + x] = FLY_ID
 

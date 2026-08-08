@@ -6,6 +6,9 @@ var label : String
 
 func _init(...args):
 	# this sucks and there has to be a better way
+	# arguments are in reverse groups starting from the most
+	# specific class up to this class.  I dunno if this is going
+	# to be stable behavior between godot releases...
 	var i : int = 0
 
 	for prop in get_property_list():

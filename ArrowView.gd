@@ -10,6 +10,11 @@ const SLOW_RATIO : float = 1.1
 # max time of a physics tick to take to scan for flies
 const FLY_SCAN_RATIO : float = 0.2
 
+enum SnakeColumn {
+	NORMAL = 0,
+	HIGHLIGHT = 1
+}
+
 @onready var arrows_view : SubViewport = $"SubViewport"
 @onready var flies_view : SubViewport = $"FliesViewport"
 @onready var flies_camera : Camera2D = $"FliesViewport/Camera2D"
@@ -71,10 +76,10 @@ func pick_snake(pos : Vector2) -> int:
 func select_snake(snake_idx : int):
 	if last_snake >= 0:
 		# if there's a last selected snake, deselect it
-		set_snake_column(arrow_map.snakes[last_snake], 0)
+		set_snake_column(arrow_map.snakes[last_snake], SnakeColumn.NORMAL)
 	if snake_idx >= 0:
 		# if there's a valid selected snake, select it
-		set_snake_column(arrow_map.snakes[snake_idx], 1)
+		set_snake_column(arrow_map.snakes[snake_idx], SnakeColumn.HIGHLIGHT)
 	# always reset last snake
 	last_snake = snake_idx
 
@@ -84,7 +89,7 @@ func activate_snake():
 		# starting
 		active_index = last_snake
 		active_snake = arrow_map.snakes[active_index].copy()
-		set_snake_column(active_snake, 0)
+		set_snake_column(active_snake, SnakeColumn.NORMAL)
 		last_snake = -1
 
 func add_snake(pos : Vector2i,
@@ -118,37 +123,45 @@ func move_selected_snake(towards : Side):
 		return
 
 	var snake : Snake = arrow_map.snakes[last_snake]
-	if len(snake.nextTowards) > 0 and \
-	   towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
-		set_snake_column(snake, 0)
+	if snake_blocked(snake, towards) and \
+	   len(snake.nextTowards) == 0:
+		# if blocked but only 1 long, just point in that direction
+		snake.headTowards = towards
+		tile_map.set_cell(snake.pos, 0, Vector2i(SnakeColumn.HIGHLIGHT, ArrowMap.HEAD_PIECE[towards]))
+	elif len(snake.nextTowards) > 0 and \
+		 towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
+		# shrink snake if trying to move back on to itself
+		set_snake_column(snake, SnakeColumn.NORMAL)
 		arrow_map.shrink_snake_both(last_snake, towards, tile_map)
-		set_snake_column(snake, 1)
+		set_snake_column(snake, SnakeColumn.HIGHLIGHT)
 	elif not snake_blocked(snake, towards):
-		set_snake_column(snake, 0)
+		# if not blocked, move in that direction
+		set_snake_column(snake, SnakeColumn.NORMAL)
 		arrow_map.move_snake_both(last_snake, towards, tile_map)
-		set_snake_column(snake, 1)
+		set_snake_column(snake, SnakeColumn.HIGHLIGHT)
 
 func grow_selected_snake(towards : Side):
 	if last_snake < 0:
 		return
 
 	var snake : Snake = arrow_map.snakes[last_snake]
-	if len(snake.nextTowards) > 0 and \
-	   towards == Snake.OPPOSITE_SIDE[snake.headTowards]:
-		set_snake_column(snake, 0)
-		arrow_map.shrink_snake_both(last_snake, towards, tile_map)
-		set_snake_column(snake, 1)
-	elif not snake_blocked(snake, towards):
-		set_snake_column(snake, 0)
+	if not snake_blocked(snake, towards):
+		# if not blocked, just grow
+		set_snake_column(snake, SnakeColumn.NORMAL)
 		arrow_map.grow_snake_both(last_snake, towards, tile_map)
-		set_snake_column(snake, 1)
+		set_snake_column(snake, SnakeColumn.HIGHLIGHT)
+	else:
+		# if blocked, try other possibilities in move, but since
+		# blocked was already checked, it should mask the default
+		# move behavior
+		move_selected_snake(towards)
 
 func reverse_selected_snake():
 	if last_snake < 0:
 		return
 
 	arrow_map.reverse_snake_both(last_snake, tile_map)
-	set_snake_column(arrow_map.snakes[last_snake], 1)
+	set_snake_column(arrow_map.snakes[last_snake], SnakeColumn.HIGHLIGHT)
 
 func split_selected_snake(pos : Vector2i):
 	var snake : Snake = arrow_map.snakes[last_snake]
@@ -193,6 +206,14 @@ func set_data(data : PuzzleData):
 	active_snake = null
 	active_snakes = len(arrow_map.snakes)
 
+func clear():
+	arrow_map.clear(arrow_map.size)
+	for tile_map in tile_maps:
+		tile_map.clear()
+	active_index = -1
+	active_snake = null
+	active_snakes = len(arrow_map.snakes)
+
 func get_side(pos : Vector2i) -> Side:
 	if pos.x > arrow_map.size.y - 1 - pos.y:
 		if pos.x > pos.y:
@@ -226,7 +247,8 @@ func get_fly_path(from : Vector2i) -> Array[Vector2i]:
 
 func clear_fly(from : Vector2i):
 	# mark space empty
-	arrow_map.occupied_by[arrow_map.size.x * from.y + from.x] = -1
+	# kinda naughty but meh
+	arrow_map.occupied_by[arrow_map.size.x * from.y + from.x] = ArrowMap.UNOCCUPIED_ID
 	tile_map.erase_cell(from)
 	coll_tile_map.erase_cell(from)
 
@@ -234,7 +256,7 @@ func pop_random_free_fly() -> Array[Vector2i]:
 	# select within borders, astar grid is from -1,-1 to size+2, size+2
 	var from : Vector2i = Vector2i(randi_range(0, astar.region.end.x - 2),
 								   randi_range(0, astar.region.end.y - 2))
-	if arrow_map.fly_at(from):
+	if not arrow_map.fly_at(from):
 		# if not a fly, return
 		return []
 

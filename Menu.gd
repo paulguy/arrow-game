@@ -117,8 +117,7 @@ func clear_last_press():
 	last_change = null
 
 func _gui_input(e : InputEvent):
-	if e is InputEventScreenTouch and \
-	   e.pressed == false:
+	if e_is_release(e):
 		clear_last_press()
 
 func update_heading_scale():
@@ -164,7 +163,7 @@ func set_items(items : Array[MenuItemDesc]):
 	change_font_size(0)
 	update_heading_scale()
 
-static func e_is_activate(e : InputEvent) -> bool:
+static func e_is_release(e : InputEvent) -> bool:
 	if (e is InputEventScreenTouch or \
 		(e is InputEventMouseButton and \
 		 e.button_index == MOUSE_BUTTON_LEFT)) and \
@@ -179,6 +178,9 @@ static func e_is_pressed(e : InputEvent) -> bool:
 	   e.pressed == true:
 		return true
 	return false
+
+static func e_is_activate(e : InputEvent) -> bool:
+	return e_is_release(e)
 
 static func e_is_dragging(e : InputEvent) -> bool:
 	if e is InputEventScreenDrag or \

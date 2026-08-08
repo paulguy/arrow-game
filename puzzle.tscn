@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://b1winxtgrqhc1" path="res://puzzle.gd" id="1_re6l2"]
 [ext_resource type="Texture2D" uid="uid://d1kv6id8hlo2a" path="res://border.png" id="2_ubegh"]
 [ext_resource type="Texture2D" uid="uid://b1foqs316umbw" path="res://bg-grid.png" id="3_mgmmf"]
+[ext_resource type="PackedScene" uid="uid://decli3x5cit4b" path="res://ArrowView.tscn" id="4_hrnaw"]
 [ext_resource type="Shader" uid="uid://dsgpq3pakocyn" path="res://ArrowViewportBlur.gdshader" id="5_dcmwq"]
 [ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="5_re6l2"]
 
@@ -55,6 +56,8 @@ navigation_enabled = false
 [node name="Field Background" type="Polygon2D" parent="Border" unique_id=292959986]
 texture_repeat = 2
 texture = ExtResource("3_mgmmf")
+
+[node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("4_hrnaw")]
 
 [node name="Arrow Viewport Blur" type="Polygon2D" parent="." unique_id=446465773]
 texture_filter = 1

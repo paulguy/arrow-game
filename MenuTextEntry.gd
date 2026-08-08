@@ -14,7 +14,10 @@ func menu_select(e : InputEvent):
 			line_edit.grab_focus()
 
 func text_submitted(new_text : String):
-	desc.submit_func.call(new_text)
+	line_edit.text = desc.submit_func.call(new_text)
+
+func text_changed(new_text : String):
+	desc.changed_func.call(new_text)
 
 func font_size_changed(val : int):
 	line_edit.add_theme_font_size_override(&"font_size", val)
