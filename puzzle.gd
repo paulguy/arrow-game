@@ -279,49 +279,46 @@ func ui_event(e : InputEvent, c : Control):
 	if menu_display:
 		return
 
-	get_viewport().set_input_as_handled()
+	#get_viewport().set_input_as_handled()
 
 	var zoom_rel : float = 0.0
 	var zoom_pos : Vector2
 
-	if e is InputEventScreenTouch:
-		var touch_e : InputEventScreenTouch = e as InputEventScreenTouch
-		if touch_e.pressed:
-			var snake_idx : int
-			snake_idx = arrow_view.pick_snake(get_view_rel_pos(touch_e.position + c.position))
-			if editor:
-				if action == Action.ADD:
-					if snake_idx < 0:
-						# only add a snake if no snake was there
-						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
-						# point it towards the outside
-						var towards : Side = arrow_view.get_side(pos)
-						arrow_view.add_snake(pos, 1, towards)
-					else:
-						# select clicked snakes in add mode anyway
-						arrow_view.select_snake(snake_idx)
-				elif action == Action.SPLIT:
-					if snake_idx >= 0:
-						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
-						arrow_view.split_selected_snake(pos)
-				elif action == Action.JOIN:
-					if snake_idx >= 0:
-						arrow_view.join_selected_snake(snake_idx)
-				elif action == Action.FLIES:
-					if snake_idx < 0:
-						var pos : Vector2i = Vector2i(get_view_rel_pos(touch_e.position + c.position)) / tile_size
-						arrow_view.place_fly(pos)
+	if Menu.e_is_activate(e):
+		var snake_idx : int
+		snake_idx = arrow_view.pick_snake(get_view_rel_pos(e.position + c.position))
+		if editor:
+			if action == Action.ADD:
+				if snake_idx < 0:
+					# only add a snake if no snake was there
+					var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position)) / tile_size
+					# point it towards the outside
+					var towards : Side = arrow_view.get_side(pos)
+					arrow_view.add_snake(pos, 1, towards)
 				else:
-					# Default action: select
+					# select clicked snakes in add mode anyway
 					arrow_view.select_snake(snake_idx)
+			elif action == Action.SPLIT:
+				if snake_idx >= 0:
+					var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position)) / tile_size
+					arrow_view.split_selected_snake(pos)
+			elif action == Action.JOIN:
+				if snake_idx >= 0:
+					arrow_view.join_selected_snake(snake_idx)
+			elif action == Action.FLIES:
+				if snake_idx < 0:
+					var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position)) / tile_size
+					arrow_view.place_fly(pos)
 			else:
-				if arrow_view.last_snake >= 0 and snake_idx == arrow_view.last_snake:
-					arrow_view.activate_snake()
-				else:
-					arrow_view.select_snake(snake_idx)
-	elif e is InputEventScreenDrag:
-		var drag_e : InputEventScreenDrag = e as InputEventScreenDrag
-		view_pos += drag_e.relative
+				# Default action: select
+				arrow_view.select_snake(snake_idx)
+		else:
+			if arrow_view.last_snake >= 0 and snake_idx == arrow_view.last_snake:
+				arrow_view.activate_snake()
+			else:
+				arrow_view.select_snake(snake_idx)
+	elif Menu.e_is_dragging(e):
+		view_pos += e.relative
 		last_drag = Time.get_ticks_msec()
 		update_view_positions()
 	elif e is InputEventMouseButton:
@@ -346,15 +343,9 @@ func ui_event(e : InputEvent, c : Control):
 		update_zoom(zoom_rel, zoom_pos)
 		update_view_positions()
 
-func e_is_activate(e : InputEvent) -> bool:
-	if e is InputEventScreenTouch and \
-	   e.pressed == false:
-		return true
-	return false
-
 func menu_button_event(e : InputEvent, c : Control) -> void:
 	get_viewport().set_input_as_handled()
-	if e_is_activate(e):
+	if Menu.e_is_activate(e):
 		for item in ui_menu.get_children():
 			if c == item:
 				match c.name:

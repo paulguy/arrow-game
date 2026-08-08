@@ -144,7 +144,6 @@ polygon = PackedVector2Array(0, 0, 100, 0, 100, 100, 0, 100)
 [connection signal="gui_input" from="Overlay/Menu/Grow" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/Menu/Reverse" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/Menu/Action" to="." method="menu_button_event" flags=18]
-[connection signal="gui_input" from="Overlay/D-Pad" to="." method="ui_event" flags=18]
 [connection signal="gui_input" from="Overlay/D-Pad/Up" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/D-Pad/Left" to="." method="menu_button_event" flags=18]
 [connection signal="gui_input" from="Overlay/D-Pad/Right" to="." method="menu_button_event" flags=18]

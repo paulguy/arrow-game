@@ -38,6 +38,7 @@ func _ready():
 func change_font_size(amount : float):
 	last_font_change = amount
 	font_size *= pow(1.2, amount)
+	font_size = max(font_size, MIN_FONT_SIZE)
 	header_label_settings.font_size = int(font_size)
 	font_size_changed.emit(header_label_settings.font_size)
 
@@ -115,7 +116,7 @@ func _process(delta : float):
 func clear_last_press():
 	last_change = null
 
-func _input(e : InputEvent):
+func _gui_input(e : InputEvent):
 	if e is InputEventScreenTouch and \
 	   e.pressed == false:
 		clear_last_press()
@@ -164,14 +165,25 @@ func set_items(items : Array[MenuItemDesc]):
 	update_heading_scale()
 
 static func e_is_activate(e : InputEvent) -> bool:
-	if e is InputEventScreenTouch and \
+	if (e is InputEventScreenTouch or \
+		(e is InputEventMouseButton and \
+		 e.button_index == MOUSE_BUTTON_LEFT)) and \
 	   e.pressed == false:
 		return true
 	return false
 
 static func e_is_pressed(e : InputEvent) -> bool:
-	if e is InputEventScreenTouch and \
+	if (e is InputEventScreenTouch or \
+		(e is InputEventMouseButton and \
+		 e.button_index == MOUSE_BUTTON_LEFT)) and \
 	   e.pressed == true:
+		return true
+	return false
+
+static func e_is_dragging(e : InputEvent) -> bool:
+	if e is InputEventScreenDrag or \
+	   (e is InputEventMouseMotion and \
+		e.button_mask & MOUSE_BUTTON_MASK_LEFT):
 		return true
 	return false
 
