@@ -196,8 +196,9 @@ func set_last_change(c : Control, mult : int):
 	change_mult = mult
 	last_change.change_value(change_mult)
 
-func update_size(new_size : Vector2i):
-	last_size = new_size
+func update_size(new_size : Vector2i = Vector2i.ZERO):
+	if new_size != Vector2i.ZERO:
+		last_size = new_size
 	var heading : Control = container.get_child(0)
 	if heading is TextureRect:
 		var title_logo : TextureRect = heading as TextureRect

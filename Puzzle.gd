@@ -1,8 +1,7 @@
+class_name Puzzle
 extends Node2D
 
 signal puzzle_finished
-
-const FILE_EXTENSION : String = "arrows"
 
 const DRAG_DELAY_MS : float = 200
 const VIEW_OFF_RATIO : float = 0.8
@@ -125,26 +124,15 @@ var grow : bool = false:
 var action : Action = Action.SELECT
 var file_name : String = "Untitled"
 var select_return_func : Callable = return_to_game
-var menu_select : Array[MenuItemDesc]
 var gen_params : RandGenParams = RandGenParams.new()
-
-func fix_file_name(fn : String) -> String:
-	if not (fn.begins_with("user://") or \
-			fn.begins_with("res://")):
-		fn = "user://%s" % fn
-
-	if not fn.ends_with(".%s" % FILE_EXTENSION):
-		fn = "%s.%s" % [fn, FILE_EXTENSION]
-
-	return fn
 
 func _ready():
 	arrow_view = $"ArrowView"
 
-	file_name = fix_file_name(file_name)
-
 	$"Overlay/Menu/Menu/Margins/Text".text = "Menu"
 	if not play_mode:
+		file_name = FileBrowser.fix_file_name(file_name, Game.FILE_EXTENSION)
+		
 		# in edit mode, make edit items visible
 		$"Overlay/Menu/Mode/Margins/Text".text = "Mode"
 		$"Overlay/Menu/Mode".visible = true
@@ -221,7 +209,6 @@ func update_size(new_size : Vector2i):
 	shade.polygon = polygon
 
 	if menu != null:
-		#menu.size = view_size
 		menu.update_size(view_size)
 
 	overlay.size = view_size
@@ -273,6 +260,11 @@ func set_puzzle_size(size : Vector2i):
 	arrow_view.make_map(size)
 	tile_size = arrow_view.tile_size
 	update_map_size()
+
+func set_data(puzzledata : PuzzleData):
+	arrow_view.set_data(puzzledata)
+	update_map_size()
+	arrow_view.update_astar()
 
 func generate_random(gen_params : RandGenParams):
 	gen_params.update_floats()
@@ -395,7 +387,7 @@ func menu_button_event(e : InputEvent, c : Control) -> void:
 func update_menu(title : String, items : Array[MenuItemDesc]):
 	menu.set_heading(title)
 	menu.set_items(items)
-	menu.update_size(last_size)
+	menu.update_size()
 
 func make_menu(title : String, items : Array[MenuItemDesc]):
 	# bit more involved because the menu is only loaded when needed
@@ -404,6 +396,7 @@ func make_menu(title : String, items : Array[MenuItemDesc]):
 	menu_display = true
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
+	menu.update_size(last_size)
 	update_menu(title, items)
 
 func ingame_menu():
@@ -450,6 +443,31 @@ var menu_editor : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
 ]
 
+func file_menu():
+	var browser : FileBrowser = FileBrowser.new(menu,
+												file_name,
+												Game.FILE_EXTENSION,
+												return_to_game,
+												save_file,
+												load_file)
+	browser.display_menu()
+
+func save_file(fn : String):
+	file_name = fn
+	var puzzledata : PuzzleData = arrow_view.get_data()
+	var file : FileAccess = FileAccess.open(file_name, FileAccess.WRITE)
+	file.store_buffer(puzzledata.serialize())
+	file.close()
+	puzzledata.free()
+	return_to_game()
+
+func load_file(fn : String):
+	file_name = fn
+	arrow_view.select_snake(-1)
+	var puzzledata : PuzzleData = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
+	set_data(puzzledata)
+	return_to_game()
+
 func resize_menu():
 	menu_resize[0].value = 0
 	menu_resize[1].value = 0
@@ -473,80 +491,6 @@ func resize():
 	arrow_view.resize_puzzle(new_bounds)
 	update_map_size()
 	return_to_game()
-
-func file_menu():
-	menu_file[0].text = file_name
-	update_menu("File", menu_file)
-
-var menu_file : Array[MenuItemDesc] = [
-	MenuTextEntryDesc.new(file_name, set_file_name, set_file_name, "Name"),
-	MenuSelectionDesc.new(select_file, "Browse"),
-	MenuSelectionDesc.new(save_file, "Save"),
-	MenuSelectionDesc.new(load_file, "Load"),
-	MenuSelectionDesc.new(return_to_game, "Cancel"),
-]
-
-func set_file_name(fn : String) -> String:
-	fn = fix_file_name(fn)
-	file_name = fn
-	return file_name
-
-func save_file():
-	var puzzledata : PuzzleData = arrow_view.get_data()
-	var file : FileAccess = FileAccess.open(file_name, FileAccess.WRITE)
-	file.store_buffer(puzzledata.serialize())
-	file.close()
-	puzzledata.free()
-	return_to_game()
-
-func load_file():
-	arrow_view.select_snake(-1)
-	var puzzledata : PuzzleData = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
-	arrow_view.set_data(puzzledata)
-	update_map_size()
-	return_to_game()
-
-func select_file():
-	menu_select = []
-	for item in menu_select_template:
-		menu_select.append(item)
-
-	var puzzledata : PuzzleData
-	var image : Image
-	var desc : MenuImageSelectionDesc
-
-	var dir : DirAccess = DirAccess.open("user://")
-	dir.list_dir_begin()
-	var fn : String = dir.get_next()
-	while fn != "":
-		if fn.get_extension() == FILE_EXTENSION:
-			puzzledata = PuzzleData.deserialize(FileAccess.get_file_as_bytes("user://%s" % fn))
-			image = puzzledata.get_preview()
-			desc = MenuImageSelectionDesc.new(image, "user://%s" % fn, select_file_item, fn)
-			menu_select.push_front(desc)
-		fn = dir.get_next()
-	select_return_func = file_menu
-	update_menu("Browse", menu_select)
-	menu.scrollable = true
-
-var menu_select_template : Array[MenuItemDesc] = [
-	MenuSelectionDesc.new(select_return, "Cancel")
-]
-
-func free_menu_select():
-	for item in menu_select:
-		if item not in menu_select_template:
-			item.free()
-	menu_select = []
-
-func select_return():
-	free_menu_select()
-	menu.scrollable = false
-	select_return_func.call()
-
-func select_file_item(key : String):
-	file_name = key
-	select_return()
 
 func clear_menu():
 	update_menu("Clear?", menu_clear)

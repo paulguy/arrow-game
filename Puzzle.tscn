@@ -1,14 +1,14 @@
 [gd_scene format=3 uid="uid://ck38geonn6c80"]
 
-[ext_resource type="Script" uid="uid://b1winxtgrqhc1" path="res://puzzle.gd" id="1_re6l2"]
-[ext_resource type="Texture2D" uid="uid://d1kv6id8hlo2a" path="res://border.png" id="2_ubegh"]
-[ext_resource type="Texture2D" uid="uid://b1foqs316umbw" path="res://bg-grid.png" id="3_mgmmf"]
-[ext_resource type="PackedScene" uid="uid://decli3x5cit4b" path="res://ArrowView.tscn" id="4_hrnaw"]
-[ext_resource type="Shader" uid="uid://dsgpq3pakocyn" path="res://ArrowViewportBlur.gdshader" id="5_dcmwq"]
-[ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="5_re6l2"]
+[ext_resource type="Script" uid="uid://b1winxtgrqhc1" path="res://Puzzle.gd" id="1_bqrin"]
+[ext_resource type="Texture2D" uid="uid://d1kv6id8hlo2a" path="res://border.png" id="2_xaj2c"]
+[ext_resource type="Texture2D" uid="uid://b1foqs316umbw" path="res://bg-grid.png" id="3_utmqa"]
+[ext_resource type="PackedScene" uid="uid://decli3x5cit4b" path="res://ArrowView.tscn" id="4_nbo81"]
+[ext_resource type="Shader" uid="uid://dsgpq3pakocyn" path="res://ArrowViewportBlur.gdshader" id="5_nnag0"]
+[ext_resource type="PackedScene" uid="uid://dx4ljldiki1g3" path="res://LabelRect.tscn" id="6_pqwvn"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ryrav"]
-texture = ExtResource("2_ubegh")
+texture = ExtResource("2_xaj2c")
 texture_region_size = Vector2i(8, 8)
 0:0/0 = 0
 1:0/next_alternative_id = 2
@@ -40,13 +40,13 @@ tile_size = Vector2i(8, 8)
 sources/0 = SubResource("TileSetAtlasSource_ryrav")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_o8fo8"]
-shader = ExtResource("5_dcmwq")
+shader = ExtResource("5_nnag0")
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_o8fo8"]
 blend_mode = 2
 
 [node name="Puzzle" type="Node2D" unique_id=378022802]
-script = ExtResource("1_re6l2")
+script = ExtResource("1_bqrin")
 
 [node name="Border" type="TileMapLayer" parent="." unique_id=1302836804]
 tile_set = SubResource("TileSet_o8fo8")
@@ -55,9 +55,9 @@ navigation_enabled = false
 
 [node name="Field Background" type="Polygon2D" parent="Border" unique_id=292959986]
 texture_repeat = 2
-texture = ExtResource("3_mgmmf")
+texture = ExtResource("3_utmqa")
 
-[node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("4_hrnaw")]
+[node name="ArrowView" parent="." unique_id=396112226 instance=ExtResource("4_nbo81")]
 
 [node name="Arrow Viewport Blur" type="Polygon2D" parent="." unique_id=446465773]
 texture_filter = 1
@@ -83,29 +83,29 @@ offset_bottom = 720.0
 [node name="Menu" type="VBoxContainer" parent="Overlay" unique_id=1017222792]
 layout_mode = 2
 
-[node name="Menu" parent="Overlay/Menu" unique_id=728411159 instance=ExtResource("5_re6l2")]
+[node name="Menu" parent="Overlay/Menu" unique_id=728411159 instance=ExtResource("6_pqwvn")]
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Mode" parent="Overlay/Menu" unique_id=2141985092 instance=ExtResource("5_re6l2")]
-visible = false
-modulate = Color(1, 1, 1, 0.49803922)
-layout_mode = 2
-
-[node name="Delete" parent="Overlay/Menu" unique_id=1452871784 instance=ExtResource("5_re6l2")]
+[node name="Mode" parent="Overlay/Menu" unique_id=2141985092 instance=ExtResource("6_pqwvn")]
 visible = false
 modulate = Color(1, 1, 1, 0.49803922)
 layout_mode = 2
 
-[node name="Grow" parent="Overlay/Menu" unique_id=477519953 instance=ExtResource("5_re6l2")]
+[node name="Delete" parent="Overlay/Menu" unique_id=1452871784 instance=ExtResource("6_pqwvn")]
+visible = false
+modulate = Color(1, 1, 1, 0.49803922)
+layout_mode = 2
+
+[node name="Grow" parent="Overlay/Menu" unique_id=477519953 instance=ExtResource("6_pqwvn")]
 visible = false
 layout_mode = 2
 
-[node name="Reverse" parent="Overlay/Menu" unique_id=666884993 instance=ExtResource("5_re6l2")]
+[node name="Reverse" parent="Overlay/Menu" unique_id=666884993 instance=ExtResource("6_pqwvn")]
 visible = false
 layout_mode = 2
 
-[node name="Action" parent="Overlay/Menu" unique_id=1811260475 instance=ExtResource("5_re6l2")]
+[node name="Action" parent="Overlay/Menu" unique_id=1811260475 instance=ExtResource("6_pqwvn")]
 visible = false
 layout_mode = 2
 
@@ -114,22 +114,22 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Up" parent="Overlay/D-Pad" unique_id=618444504 instance=ExtResource("5_re6l2")]
+[node name="Up" parent="Overlay/D-Pad" unique_id=618444504 instance=ExtResource("6_pqwvn")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 2
 
-[node name="Left" parent="Overlay/D-Pad" unique_id=415323139 instance=ExtResource("5_re6l2")]
+[node name="Left" parent="Overlay/D-Pad" unique_id=415323139 instance=ExtResource("6_pqwvn")]
 layout_mode = 2
 size_flags_horizontal = 2
 size_flags_vertical = 4
 
-[node name="Right" parent="Overlay/D-Pad" unique_id=1973637693 instance=ExtResource("5_re6l2")]
+[node name="Right" parent="Overlay/D-Pad" unique_id=1973637693 instance=ExtResource("6_pqwvn")]
 layout_mode = 2
 size_flags_horizontal = 10
 size_flags_vertical = 4
 
-[node name="Down" parent="Overlay/D-Pad" unique_id=1561647744 instance=ExtResource("5_re6l2")]
+[node name="Down" parent="Overlay/D-Pad" unique_id=1561647744 instance=ExtResource("6_pqwvn")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 10
