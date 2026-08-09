@@ -84,8 +84,7 @@ func new_game_menu():
 	update_menu("New Game", menu_new_game)
 
 var menu_new_game : Array[MenuItemDesc] = [
-	MenuSelectionDesc.new(load_puzzle, "Load"),
-	MenuSelectionDesc.new(random_menu, "Random"),
+	MenuDoubleSelectionDesc.new(load_puzzle, random_menu, "Load", "Random"),
 	MenuSelectionDesc.new(main_menu, "Main Menu")
 ]
 
@@ -106,6 +105,8 @@ func select_return():
 		menu.destroy()
 		make_puzzle()
 		puzzle.set_data(puzzledata)
+	else:
+		new_game_menu()
 
 func random_menu():
 	puzzle_size = Puzzle.DEFAULT_PUZZLE_SIZE

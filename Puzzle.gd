@@ -128,7 +128,6 @@ var grow : bool = false:
 		grow = val
 var action : Action = Action.SELECT
 var file_name : String = "Untitled"
-var select_return_func : Callable = return_to_game
 
 func _ready():
 	arrow_view = $"ArrowView"
@@ -391,7 +390,7 @@ func update_menu(title : String, items : Array[MenuItemDesc]):
 	menu.set_items(items)
 	menu.update_size()
 
-func make_menu(title : String, items : Array[MenuItemDesc]):
+func make_menu():
 	# bit more involved because the menu is only loaded when needed
 	shade.visible = true
 	overlay.visible = false
@@ -399,14 +398,13 @@ func make_menu(title : String, items : Array[MenuItemDesc]):
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
 	menu.update_size(last_size)
-	update_menu(title, items)
 
 func ingame_menu():
-	make_menu("Game Menu", menu_ingame)
+	make_menu()
+	update_menu("Game Menu", menu_ingame)
 
 var menu_ingame : Array[MenuItemDesc] = [
-	MenuSelectionDesc.new(return_to_game, "Return to Game"),
-	MenuSelectionDesc.new(return_to_menu, "Return to Menu")
+	MenuDoubleSelectionDesc.new(return_to_game, return_to_menu, "Return", "Main Menu")
 ]
 
 func return_to_game():
@@ -427,48 +425,56 @@ func puzzle_clear():
 		editor = true
 
 func endgame_menu():
-	make_menu("Game Over", menu_endgame)
+	make_menu()
+	update_menu("Game Over", menu_endgame)
 
 var menu_endgame : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
 ]
 
 func editor_menu():
-	make_menu("Editor Menu", menu_editor)
+	make_menu()
+	do_editor_menu()
+
+func do_editor_menu():
+	update_menu("Editor Menu", menu_editor)
 
 var menu_editor : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(file_menu, "File"),
 	MenuSelectionDesc.new(clear_menu, "Clear"),
 	MenuSelectionDesc.new(random_menu, "Random"),
 	MenuSelectionDesc.new(resize_menu, "Resize"),
-	MenuSelectionDesc.new(return_to_game, "Return to Editor"),
-	MenuSelectionDesc.new(return_to_menu, "Return to Main Menu")
+	MenuDoubleSelectionDesc.new(return_to_game, return_to_menu, "Return", "Main Menu")
 ]
 
 func file_menu():
 	var browser : FileBrowser = FileBrowser.new(menu,
 												file_name,
 												Game.FILE_EXTENSION,
-												return_to_game,
+												select_return,
 												save_file,
 												load_file)
 	browser.display_menu()
 
 func save_file(fn : String):
 	file_name = fn
-	var puzzledata : PuzzleData = arrow_view.get_data()
+	puzzle_data = arrow_view.get_data()
 	var file : FileAccess = FileAccess.open(file_name, FileAccess.WRITE)
-	file.store_buffer(puzzledata.serialize())
+	file.store_buffer(puzzle_data.serialize())
 	file.close()
-	puzzledata.free()
-	return_to_game()
 
 func load_file(fn : String):
 	file_name = fn
 	arrow_view.select_snake(-1)
-	var puzzledata : PuzzleData = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
-	set_data(puzzledata)
-	return_to_game()
+	puzzle_data = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
+	set_data(puzzle_data)
+
+func select_return():
+	if puzzle_data != null:
+		puzzle_data.free()
+		return_to_game()
+	else:
+		do_editor_menu()
 
 func resize_menu():
 	menu_resize[0].value = 0
@@ -483,8 +489,7 @@ var menu_resize : Array[MenuItemDesc] = [
 	MenuValueDesc.new(0, -254, 254, null, "Top"),
 	MenuValueDesc.new(0, 1, 254, null, "New Width"),
 	MenuValueDesc.new(0, 1, 254, null, "New Height"),
-	MenuSelectionDesc.new(resize, "Resize"),
-	MenuSelectionDesc.new(return_to_game, "Return to Editor")
+	MenuDoubleSelectionDesc.new(do_editor_menu, resize, "Return", "Resize")
 ]
 
 func resize():
@@ -498,7 +503,7 @@ func clear_menu():
 	update_menu("Clear?", menu_clear)
 
 var menu_clear : Array[MenuItemDesc] = [
-	MenuDoubleSelectionDesc.new(return_to_game, do_clear, "No", "Yes")
+	MenuDoubleSelectionDesc.new(do_editor_menu, do_clear, "No", "Yes")
 ]
 
 func do_clear():
@@ -530,7 +535,7 @@ var menu_random : Array[MenuItemDesc] = [
 	MenuValueDesc.new(MIN_LENGTH, MIN_LENGTH, MAX_LENGTH, min_length_change, "Min Length"),
 	MenuValueDesc.new(MIN_LENGTH, MIN_LENGTH, MAX_LENGTH, max_length_change, "Max Length"),
 	MenuSelectionDesc.new(advanced_menu, "Advanced >>"),
-	MenuDoubleSelectionDesc.new(return_to_game, do_random, "Cancel", "Go"),
+	MenuDoubleSelectionDesc.new(do_editor_menu, do_random, "Cancel", "Go"),
 ]
 
 func min_length_change(val : int) -> int:
