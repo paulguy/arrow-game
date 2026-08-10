@@ -477,12 +477,15 @@ func select_return():
 			if puzzle_data == null:
 				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, file_menu)
 			else:
-				arrow_view.select_snake(-1)
-				puzzle_data = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
-				set_data(puzzle_data)
+				if puzzle_data.check_data():
+					arrow_view.select_snake(-1)
+					puzzle_data = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
+					set_data(puzzle_data)
+					return_to_game()
+				else:
+					ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, file_menu)
 				puzzle_data.free()
 				puzzle_data = null
-				return_to_game()
 	elif file_op == FileBrowser.FileOperation.SAVE:
 		var file : FileAccess = FileAccess.open(file_name, FileAccess.WRITE)
 		if file == null:

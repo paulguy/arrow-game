@@ -115,9 +115,12 @@ func select_return():
 			if puzzledata == null:
 				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, load_puzzle)
 			else:
-				menu.destroy()
-				make_puzzle()
-				puzzle.set_data(puzzledata)
+				if puzzledata.check_data():
+					menu.destroy()
+					make_puzzle()
+					puzzle.set_data(puzzledata)
+				else:
+					ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, load_puzzle)
 				puzzledata.free()
 				puzzledata = null
 	else:

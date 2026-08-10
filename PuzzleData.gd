@@ -240,3 +240,26 @@ func get_preview() -> Image:
 	image.set_data(size.x, size.y, false, Image.Format.FORMAT_RGBA8, data)
 
 	return image
+
+func check_data() -> bool:
+	# fly data is checked already on deserialization, just make
+	# sure no snakes go out of range or have a shape that can't
+	# be drawn to the tilemap and would crash
+
+	for snake in snakes:
+		var pos : Vector2i = snake.pos
+		var lastTowards : Side = Snake.OPPOSITE_SIDE[snake.headTowards]
+		if pos.x < 0 or pos.x >= size.x or \
+		   pos.y < 0 or pos.y >= size.y:
+			return false
+		for towards in snake.nextTowards:
+			if Vector2i(lastTowards, towards) not in ArrowMap.NEXT_CELL:
+				return false
+			lastTowards = towards
+
+			pos += Snake.UPDATE_POS[towards]
+			if pos.x < 0 or pos.x >= size.x or \
+			   pos.y < 0 or pos.y >= size.y:
+				return false
+
+	return true
