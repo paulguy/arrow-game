@@ -23,6 +23,7 @@ var last_rects : Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
 var last_font_change : float = 0.0
 
 var menu_descs : Dictionary[MenuItem, MenuItemDesc] = {}
+var menu_items : Array[MenuItem]
 var last_change : MenuValue = null
 var last_change_time : float = 0.0
 var last_value_change_time : float = 0.0
@@ -151,13 +152,18 @@ func set_items(items : Array[MenuItemDesc]):
 		container.remove_child(item)
 		item.queue_free()
 	menu_descs = {}
+	menu_items = []
 
 	for item in items:
 		var menu_item : MenuItem = item.setup(container, self)
-		container.move_child(menu_item, -2)
-		menu_item.desc = item
-		menu_item.label = item.label
-		menu_descs[menu_item] = item
+		if menu_item != null:
+			container.move_child(menu_item, -2)
+			menu_item.desc = item
+			menu_item.label = item.label
+			menu_descs[menu_item] = item
+			menu_items.append(menu_item)
+		else:
+			menu_items.append(null)
 
 	# don't change font size, just signal
 	change_font_size(0)

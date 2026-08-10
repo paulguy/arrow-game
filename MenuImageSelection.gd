@@ -12,6 +12,8 @@ var image : Image:
 func _ready():
 	$"Image Container/Margins/Text".queue_free()
 	$"Image Container/Margins".add_child(texrect)
+	texrect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	texrect.expand_mode = TextureRect.EXPAND_FIT_WIDTH
 	image = desc.image
 
 func menu_select(e : InputEvent):

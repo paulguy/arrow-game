@@ -1,8 +1,6 @@
 class_name Game
 extends Node2D
 
-const FILE_EXTENSION : String = "arrows"
-
 @onready var background : Polygon2D = $Background
 
 var last_size : Vector2i = Vector2i.ZERO
@@ -13,6 +11,8 @@ var puzzle : Puzzle = null
 
 var puzzle_size : Vector2i = Puzzle.DEFAULT_PUZZLE_SIZE
 var gen_params : RandGenParams = RandGenParams.new()
+var file_name : String = "Untitled"
+var file_op : FileBrowser.FileOperation = FileBrowser.FileOperation.NONE
 
 func make_menu():
 	menu = load("res://Menu.tscn").instantiate()
@@ -89,22 +89,37 @@ var menu_new_game : Array[MenuItemDesc] = [
 ]
 
 func load_puzzle():
+	file_op = FileBrowser.FileOperation.NONE
 	var browser : FileBrowser = FileBrowser.new(menu,
-												"Untitled",
-												FILE_EXTENSION,
+												file_name,
 												select_return,
 												null,
 												load_file)
 	browser.display_menu()
 
 func load_file(fn : String):
-	puzzledata = PuzzleData.deserialize(FileAccess.get_file_as_bytes(fn))
+	file_name = fn
+	file_op = FileBrowser.FileOperation.LOAD
 
 func select_return():
-	if puzzledata != null:
-		menu.destroy()
-		make_puzzle()
-		puzzle.set_data(puzzledata)
+	if file_op == FileBrowser.FileOperation.LOAD:
+		var data : PackedByteArray = FileAccess.get_file_as_bytes(file_name)
+		if len(data) == 0:
+			var error : Error = FileAccess.get_open_error()
+			if error == Error.OK:
+				ErrorScreen.show(menu, "File %s is empty." % file_name, load_puzzle)
+			else:
+				ErrorScreen.show(menu, "File %s couldn't be opened: %s" % [file_name, error_string(error)], load_puzzle)
+		else:
+			puzzledata = PuzzleData.deserialize(data)
+			if puzzledata == null:
+				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, load_puzzle)
+			else:
+				menu.destroy()
+				make_puzzle()
+				puzzle.set_data(puzzledata)
+				puzzledata.free()
+				puzzledata = null
 	else:
 		new_game_menu()
 
@@ -149,8 +164,7 @@ func max_length_change(val : int) -> int:
 	return gen_params.max_length
 
 func advanced_menu():
-	menu.set_heading("Advanced")
-	menu.set_items(menu_advanced)
+	update_menu("Advanced", menu_advanced)
 
 var menu_advanced : Array[MenuItemDesc] = [
 	MenuValueDesc.new(0, 0, 1000, null, "Base Chance Num"),

@@ -13,6 +13,9 @@ func menu_select(e : InputEvent):
 		else:
 			line_edit.grab_focus()
 
+func editing_toggled(toggled_on : bool):
+	desc.editing_func.call(toggled_on)
+
 func text_submitted(new_text : String):
 	line_edit.text = desc.submit_func.call(new_text)
 

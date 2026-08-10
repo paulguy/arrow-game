@@ -3,6 +3,7 @@ extends Object
 
 const FLY_COLOR : Color = Color.BLACK
 const SNAKE_COLOR : Color = Color.WHITE
+const BG_ALPHA : float = 0.3
 
 var size : Vector2i
 var snakes : Array[Snake]
@@ -15,6 +16,9 @@ func _init(size : Vector2i,
 	self.snakes = snakes
 	self.flies = flies
 
+static func flies_size(size : Vector2i):
+	return size.x * size.y / 8 + (1 if size.x * size.y % 8 > 0 else 0)
+
 static func get_data(size : Vector2i,
 					 snakes : Array[Snake],
 					 occupied_by : PackedInt32Array) -> PuzzleData:
@@ -25,7 +29,7 @@ static func get_data(size : Vector2i,
 			newsnakes.append(snake.copy())
 
 	var flies : PackedByteArray = PackedByteArray()
-	flies.resize(size.x * size.y / 8 + (1 if size.x * size.y % 8 > 0 else 0))
+	flies.resize(flies_size(size))
 	# pack all the whole bytes in
 	for i in size.x * size.y / 8:
 		var i2 : int = i * 8
@@ -140,6 +144,9 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 	var size : Vector2i
 	var snakes : Array[Snake] = []
 
+	if len(data) < 2:
+		return null
+
 	size.x = data[0]
 	size.y = data[1]
 
@@ -149,6 +156,8 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 	var headTowards : Side
 	var nextTowards : Array[Side]
 	while true:
+		if len(data) - datapos < 6:
+			return null
 		# get position
 		snakepos.x = data[datapos]
 		# 255 is the magic byte for the last snake
@@ -172,13 +181,16 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 		snakes.append(Snake.new(snakepos, 1, headTowards))
 		snakes[-1].nextTowards = nextTowards
 
+	if len(data) - datapos < flies_size(size):
+		return null
+
 	# the rest of the data is flies
 	return PuzzleData.new(size, snakes, data.slice(datapos))
 
 func get_preview() -> Image:
 	var image : Image = Image.create_empty(size.x, size.y, false, Image.Format.FORMAT_RGBA8)
 	var fly_color : Color = FLY_COLOR
-	fly_color.a = 0
+	fly_color.a = BG_ALPHA
 	var snake_color : int = SNAKE_COLOR.to_rgba32()
 	image.fill(fly_color)
 	var data : PackedByteArray = image.get_data()

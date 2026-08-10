@@ -2,6 +2,7 @@ class_name MenuTextEntryDesc
 extends MenuItemDesc
 
 var text : String
+var editing_func : Callable
 var changed_func : Callable
 var submit_func : Callable
 
@@ -12,10 +13,15 @@ func setup(container : Container,
 	item.get_node("Value Container/Margins/Text").queue_free()
 	var line_edit : LineEdit = LineEdit.new()
 	item.get_node("Value Container/Margins").add_child(line_edit)
-	line_edit.connect(&"text_changed",
-					  item.text_changed)
-	line_edit.connect(&"text_submitted",
-					  item.text_submitted)
+	if editing_func.is_valid():
+		line_edit.connect(&"editing_toggled",
+						  item.editing_toggled)
+	if changed_func.is_valid():
+		line_edit.connect(&"text_changed",
+						  item.text_changed)
+	if submit_func.is_valid():
+		line_edit.connect(&"text_submitted",
+						  item.text_submitted)
 	line_edit.size_flags_horizontal |= Control.SIZE_EXPAND_FILL
 	line_edit.expand_to_text_length = true
 	line_edit.add_theme_stylebox_override(&"normal", StyleBoxEmpty.new())

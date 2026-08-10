@@ -1,48 +1,54 @@
 class_name FileBrowser
 extends Node
 
+enum FileOperation {
+	NONE = 0,
+	SAVE,
+	LOAD
+}
+
 var menu : Menu
-var file_name : String
-var extension : String
+var file_item : FileItem
 var return_func : Callable
 var save_func : Callable
 var load_func : Callable
 
 var menu_select : Array[MenuItemDesc]
+var show_load : bool = false
+var show_save : bool = false
+var editing : bool = false
 
-static func fix_file_name(fn : String, ext : String) -> String:
-	if not (fn.begins_with("user://") or \
-			fn.begins_with("res://")):
-		fn = "user://%s" % fn
+func replace_placeholder_selection(label : String,
+								   activate_func : Callable):
+	for i in len(menu_file):
+		var item : MenuItemDesc = menu_file[i]
+		if item is MenuPlaceholderDesc and \
+		   item.label == label:
+			menu_file[i] = MenuSelectionDesc.new(activate_func, label)
+			break
 
-	if not fn.ends_with(".%s" % ext):
-		fn = "%s.%s" % [fn, ext]
-
-	return fn
+func replace_selection_placeholder(label : String):
+	for i in len(menu_file):
+		var item : MenuItemDesc = menu_file[i]
+		if item is MenuSelectionDesc and \
+		   item.label == label:
+			menu_file[i] = MenuPlaceholderDesc.new(label)
+			break
 
 func _init(menu : Menu,
 		   file_name : String,
-		   extension : String,
 		   return_func,
 		   save_func,
 		   load_func):
 	self.menu = menu
-	self.file_name = fix_file_name(file_name, extension)
-	self.extension = extension
+	file_item = FileItem.make_from_path(file_name)
 	self.return_func = return_func
 	if save_func != null:
 		self.save_func = save_func
+		show_save = true
 	if load_func != null:
 		self.load_func = load_func
-
-func remove_selection_if_null(out_func, in_func : Callable):
-	if not out_func is Callable or \
-	   not out_func.is_valid():
-		for item in menu_file:
-			if item is MenuSelectionDesc and \
-			   item.activate_func == in_func:
-				menu_file.erase(item)
-				break
+		show_load = true
 
 func update_menu(title : String,
 				 items : Array[MenuItemDesc]):
@@ -51,16 +57,24 @@ func update_menu(title : String,
 	menu.update_size()
 
 func display_menu():
-	remove_selection_if_null(save_func, save_file)
-	remove_selection_if_null(load_func, load_file)
-	menu_file[0].text = file_name
+	menu_file[0].text = file_item.get_display_string()
+
+	if show_save:
+		replace_placeholder_selection("Save", save_file)
+	else:
+		replace_selection_placeholder("Save")
+	if show_load:
+		replace_placeholder_selection("Load", load_file)
+	else:
+		replace_selection_placeholder("Load")
+
 	update_menu("File", menu_file)
 
 var menu_file : Array[MenuItemDesc] = [
-	MenuTextEntryDesc.new(file_name, set_file_name, set_file_name, "Name"),
+	MenuTextEntryDesc.new("", set_editing, null, submit_name, "Name"),
+	MenuPlaceholderDesc.new("Save"),
+	MenuPlaceholderDesc.new("Load"),
 	MenuSelectionDesc.new(select_file, "Browse"),
-	MenuSelectionDesc.new(save_file, "Save"),
-	MenuSelectionDesc.new(load_file, "Load"),
 	MenuSelectionDesc.new(do_return, "Cancel"),
 ]
 
@@ -68,38 +82,50 @@ func do_return():
 	menu.scrollable = false
 	return_func.call()
 
+func submit_name(fn : String):
+	file_item.free()
+	file_item = FileItem.make_from_path(fn)
+	return file_item.get_display_string()
+
 func save_file():
-	save_func.call(file_name)
+	if editing:
+		submit_name(menu.menu_items[0].line_edit.text)
+	save_func.call(file_item.get_path())
 	do_return()
 
 func load_file():
-	load_func.call(file_name)
+	if editing:
+		submit_name(menu.menu_items[0].line_edit.text)
+	load_func.call(file_item.get_path())
 	do_return()
 
-func set_file_name(fn : String) -> String:
-	fn = fix_file_name(fn, extension)
-	file_name = fn
-	return file_name
+func set_editing(toggled_on : bool):
+	if toggled_on:
+		menu.menu_items[0].line_edit.text = file_item.get_edit_string()
+	editing = toggled_on
 
-func select_file():
-	menu_select = []
-	for item in menu_select_template:
-		menu_select.append(item)
-
-	var puzzledata : PuzzleData
-	var image : Image
-	var desc : MenuImageSelectionDesc
-
-	var dir : DirAccess = DirAccess.open("user://")
+func add_files_dir(dir_name : String):
+	DirAccess.make_dir_recursive_absolute(dir_name)
+	var dir : DirAccess = DirAccess.open(dir_name)
 	dir.list_dir_begin()
 	var fn : String = dir.get_next()
 	while fn != "":
-		if fn.get_extension() == extension:
-			puzzledata = PuzzleData.deserialize(FileAccess.get_file_as_bytes("user://%s" % fn))
-			image = puzzledata.get_preview()
-			desc = MenuImageSelectionDesc.new(image, "user://%s" % fn, select_file_item, fn)
-			menu_select.push_front(desc)
+		if FileItem.match_name(fn):
+			var item : FileItem = FileItem.make_from_path("%s%s" % [dir_name, fn])
+			var puzzledata : PuzzleData = PuzzleData.deserialize(FileAccess.get_file_as_bytes(item.get_path()))
+			var image : Image = puzzledata.get_preview()
+			var desc : MenuImageSelectionDesc = MenuImageSelectionDesc.new(image, item, select_file_item, item.get_display_string())
+			menu_select.append(desc)
 		fn = dir.get_next()
+
+func select_file():
+	menu_select = []
+	for sourcedir in FileItem.FILE_SOURCE_PATH:
+		add_files_dir(sourcedir)
+
+	for item in menu_select_template:
+		menu_select.append(item)
+
 	update_menu("Browse", menu_select)
 	menu.scrollable = true
 
@@ -110,9 +136,11 @@ var menu_select_template : Array[MenuItemDesc] = [
 func free_menu_select():
 	for item in menu_select:
 		if item not in menu_select_template:
+			item.key.free()
 			item.free()
 	menu_select = []
 
-func select_file_item(key : String):
-	file_name = key
+func select_file_item(key : FileItem):
+	file_item.free()
+	file_item = key
 	display_menu()
