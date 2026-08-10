@@ -12,7 +12,6 @@ var puzzle : Puzzle = null
 var puzzle_size : Vector2i = Puzzle.DEFAULT_PUZZLE_SIZE
 var gen_params : RandGenParams = RandGenParams.new()
 var file_name : String = "Untitled"
-var file_op : FileBrowser.FileOperation = FileBrowser.FileOperation.NONE
 
 func make_menu():
 	menu = load("res://Menu.tscn").instantiate()
@@ -89,42 +88,26 @@ var menu_new_game : Array[MenuItemDesc] = [
 ]
 
 func load_puzzle():
-	file_op = FileBrowser.FileOperation.NONE
 	var browser : FileBrowser = FileBrowser.new(menu,
 												file_name,
 												select_return,
+												set_file_name,
 												null,
 												load_file)
 	browser.display_menu()
 
-func load_file(fn : String):
+func set_file_name(fn : String):
 	file_name = fn
-	file_op = FileBrowser.FileOperation.LOAD
+
+func load_file(puzzledata : PuzzleData):
+	menu.destroy()
+	make_puzzle()
+	puzzle.set_data(puzzledata)
+	puzzledata.free()
+	puzzledata = null
 
 func select_return():
-	if file_op == FileBrowser.FileOperation.LOAD:
-		var data : PackedByteArray = FileAccess.get_file_as_bytes(file_name)
-		if len(data) == 0:
-			var error : Error = FileAccess.get_open_error()
-			if error == Error.OK:
-				ErrorScreen.show(menu, "File %s is empty." % file_name, load_puzzle)
-			else:
-				ErrorScreen.show(menu, "File %s couldn't be opened: %s" % [file_name, error_string(error)], load_puzzle)
-		else:
-			puzzledata = PuzzleData.deserialize(data)
-			if puzzledata == null:
-				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, load_puzzle)
-			else:
-				if puzzledata.check_data():
-					menu.destroy()
-					make_puzzle()
-					puzzle.set_data(puzzledata)
-				else:
-					ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, load_puzzle)
-				puzzledata.free()
-				puzzledata = null
-	else:
-		new_game_menu()
+	new_game_menu()
 
 func random_menu():
 	puzzle_size = Puzzle.DEFAULT_PUZZLE_SIZE

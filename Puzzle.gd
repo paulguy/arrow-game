@@ -89,7 +89,7 @@ var last_drag : int = 0
 var last_size : Vector2i
 var menu_display : bool = false
 var menu : Control = null
-var puzzle_data : PuzzleData = null
+var puzzledata : PuzzleData = null
 # whether this was started from a new game or the editor option
 var play_mode : bool = true
 # whether the editor should display (or test mode)
@@ -99,10 +99,10 @@ var editor : bool = false:
 			if not editor:
 				arrow_view.select_snake(-1)
 				# restore the list of snakes
-				if puzzle_data != null:
-					arrow_view.set_data(puzzle_data)
-					puzzle_data.free()
-					puzzle_data = null
+				if puzzledata != null:
+					arrow_view.set_data(puzzledata)
+					puzzledata.free()
+					puzzledata = null
 				$"Overlay/Menu/Mode/Margins/Text".text = "Test"
 				for item in EDITOR_BUTTONS:
 					get_node(NodePath("Overlay/Menu/%s" % item)).visible = true
@@ -111,7 +111,7 @@ var editor : bool = false:
 			if editor:
 				arrow_view.select_snake(-1)
 				# backup the list of snakes
-				puzzle_data = arrow_view.get_data()
+				puzzledata = arrow_view.get_data()
 				$"Overlay/Menu/Mode/Margins/Text".text = "Edit"
 				# update the collisions for flies
 				arrow_view.update_astar()
@@ -128,7 +128,6 @@ var grow : bool = false:
 		grow = val
 var action : Action = Action.SELECT
 var file_name : String = "Untitled"
-var file_op : FileBrowser.FileOperation = FileBrowser.FileOperation.NONE
 
 func _ready():
 	arrow_view = $"ArrowView"
@@ -447,62 +446,30 @@ var menu_editor : Array[MenuItemDesc] = [
 ]
 
 func file_menu():
-	file_op = FileBrowser.FileOperation.NONE
 	var browser : FileBrowser = FileBrowser.new(menu,
 												file_name,
 												select_return,
+												set_file_name,
 												save_file,
-												load_file)
+												load_file,
+												arrow_view.get_data())
 	browser.display_menu()
 
-func save_file(fn : String):
+func set_file_name(fn : String):
 	file_name = fn
-	file_op = FileBrowser.FileOperation.SAVE
 
-func load_file(fn : String):
-	file_name = fn
-	file_op = FileBrowser.FileOperation.LOAD
+func save_file():
+	# nothing to do, just succeeded
+	return_to_game()
+
+func load_file(puzzledata : PuzzleData):
+	arrow_view.select_snake(-1)
+	arrow_view.set_data(puzzledata)
+	puzzledata.free()
+	return_to_game()
 
 func select_return():
-	if file_op == FileBrowser.FileOperation.LOAD:
-		var data : PackedByteArray = FileAccess.get_file_as_bytes(file_name)
-		if len(data) == 0:
-			var error : Error = FileAccess.get_open_error()
-			if error == Error.OK:
-				ErrorScreen.show(menu, "File %s is empty." % file_name, file_menu)
-			else:
-				ErrorScreen.show(menu, "File %s couldn't be opened: %s" % [file_name, error_string(error)], file_menu)
-		else:
-			puzzle_data = PuzzleData.deserialize(data)
-			if puzzle_data == null:
-				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, file_menu)
-			else:
-				if puzzle_data.check_data():
-					arrow_view.select_snake(-1)
-					puzzle_data = PuzzleData.deserialize(FileAccess.get_file_as_bytes(file_name))
-					set_data(puzzle_data)
-					return_to_game()
-				else:
-					ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, file_menu)
-				puzzle_data.free()
-				puzzle_data = null
-	elif file_op == FileBrowser.FileOperation.SAVE:
-		var file : FileAccess = FileAccess.open(file_name, FileAccess.WRITE)
-		if file == null:
-			ErrorScreen.show(menu, "File %s couldn't be saved: %s" % [file_name, error_string(FileAccess.get_open_error())], file_menu)
-			do_editor_menu()
-		else:
-			puzzle_data = arrow_view.get_data()
-			if not file.store_buffer(puzzle_data.serialize()):
-				ErrorScreen.show(menu, "Couldn't write file %s." % file_name, file_menu)
-				do_editor_menu()
-			else:
-				return_to_game()
-			puzzle_data.free()
-			puzzle_data = null
-			file.close()
-	else:
-		do_editor_menu()
+	do_editor_menu()
 
 func resize_menu():
 	menu_resize[0].value = 0

@@ -1,54 +1,65 @@
 class_name FileBrowser
 extends Node
 
-enum FileOperation {
-	NONE = 0,
-	SAVE,
-	LOAD
-}
-
 var menu : Menu
 var file_item : FileItem
 var return_func : Callable
+var name_func : Callable
 var save_func : Callable
 var load_func : Callable
+var puzzledata : PuzzleData
+var was_scrollable : bool
 
 var menu_select : Array[MenuItemDesc]
 var show_load : bool = false
 var show_save : bool = false
 var editing : bool = false
 
-func replace_placeholder_selection(label : String,
-								   activate_func : Callable):
+func replace_placeholder_selection(left_label : String,
+								   left_func : Callable,
+								   right_label : String,
+								   right_func : Callable):
 	for i in len(menu_file):
 		var item : MenuItemDesc = menu_file[i]
 		if item is MenuPlaceholderDesc and \
-		   item.label == label:
-			menu_file[i] = MenuSelectionDesc.new(activate_func, label)
+		   item.label == left_label:
+			menu_file[i] = MenuDoubleSelectionDesc.new(left_func, right_func, left_label, right_label)
 			break
 
-func replace_selection_placeholder(label : String):
+func replace_selection_placeholder(left_label : String):
 	for i in len(menu_file):
 		var item : MenuItemDesc = menu_file[i]
 		if item is MenuSelectionDesc and \
-		   item.label == label:
-			menu_file[i] = MenuPlaceholderDesc.new(label)
+		   item.label == left_label:
+			menu_file[i] = MenuPlaceholderDesc.new(left_label)
 			break
 
 func _init(menu : Menu,
 		   file_name : String,
 		   return_func,
+		   name_func,
 		   save_func,
-		   load_func):
+		   load_func,
+		   puzzledata : PuzzleData = null):
 	self.menu = menu
 	file_item = FileItem.make_from_path(file_name)
 	self.return_func = return_func
+
+	if name_func != null:
+		self.name_func = name_func
+
 	if save_func != null:
 		self.save_func = save_func
+
+	if puzzledata != null:
+		self.puzzledata = puzzledata
 		show_save = true
+
 	if load_func != null:
 		self.load_func = load_func
 		show_load = true
+
+	was_scrollable = menu.scrollable
 
 func update_menu(title : String,
 				 items : Array[MenuItemDesc]):
@@ -60,17 +71,18 @@ func display_menu():
 	menu_file[0].text = file_item.get_display_string()
 
 	if show_save:
-		replace_placeholder_selection("Save", save_file)
+		replace_placeholder_selection("Save", save_file, "Copy", export_file)
 	else:
 		replace_selection_placeholder("Save")
 	if show_load:
-		replace_placeholder_selection("Load", load_file)
+		replace_placeholder_selection("Load", load_file, "Paste", import_file)
 	else:
 		replace_selection_placeholder("Load")
 
 	update_menu("File", menu_file)
 
 var menu_file : Array[MenuItemDesc] = [
+	# TODO: Import/Export clipboard
 	MenuTextEntryDesc.new("", set_editing, null, submit_name, "Name"),
 	MenuPlaceholderDesc.new("Save"),
 	MenuPlaceholderDesc.new("Load"),
@@ -79,25 +91,68 @@ var menu_file : Array[MenuItemDesc] = [
 ]
 
 func do_return():
-	menu.scrollable = false
+	menu.scrollable = was_scrollable
 	return_func.call()
 
 func submit_name(fn : String):
 	file_item.free()
 	file_item = FileItem.make_from_path(fn)
+	name_func.call(file_item.get_path())
 	return file_item.get_display_string()
 
 func save_file():
 	if editing:
 		submit_name(menu.menu_items[0].line_edit.text)
-	save_func.call(file_item.get_path())
-	do_return()
+
+	var file_name : String = file_item.get_path()
+	var file : FileAccess = FileAccess.open(file_name, FileAccess.WRITE)
+	if file == null:
+		ErrorScreen.show(menu, "File %s couldn't be saved: %s" % [file_name, error_string(FileAccess.get_open_error())], display_menu)
+	else:
+		if not file.store_buffer(puzzledata.serialize()):
+			ErrorScreen.show(menu, "Couldn't write file %s." % file_name, display_menu)
+		else:
+			# succeeded, about to return to original menu so put
+			# it back to what it was
+			menu.scrollable = was_scrollable
+			if save_func != null:
+				save_func.call()
+			else:
+				return_func.call()
+		file.close()
 
 func load_file():
 	if editing:
 		submit_name(menu.menu_items[0].line_edit.text)
-	load_func.call(file_item.get_path())
-	do_return()
+
+	var file_name : String = file_item.get_path()
+	var data : PackedByteArray = FileAccess.get_file_as_bytes(file_name)
+	if len(data) == 0:
+		var error : Error = FileAccess.get_open_error()
+		if error == Error.OK:
+			ErrorScreen.show(menu, "File %s is empty." % file_name, display_menu)
+		else:
+			ErrorScreen.show(menu, "File %s couldn't be opened: %s" % [file_name, error_string(error)], display_menu)
+	else:
+		puzzledata = PuzzleData.deserialize(data)
+		if puzzledata == null:
+			ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, display_menu)
+		else:
+			if puzzledata.check_data():
+				# succeeded, about to return to original menu so put
+				# it back to what it was
+				menu.scrollable = was_scrollable
+				load_func.call(puzzledata)
+			else:
+				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, display_menu)
+				puzzledata.free()
+				puzzledata = null
+
+func import_file():
+	pass
+
+func export_file():
+	pass
 
 func set_editing(toggled_on : bool):
 	if toggled_on:
