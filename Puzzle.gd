@@ -464,7 +464,7 @@ func save_file():
 
 func load_file(puzzledata : PuzzleData):
 	arrow_view.select_snake(-1)
-	arrow_view.set_data(puzzledata)
+	set_data(puzzledata)
 	puzzledata.free()
 	return_to_game()
 

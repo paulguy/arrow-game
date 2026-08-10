@@ -1,6 +1,9 @@
 class_name FileBrowser
 extends Node
 
+const RAW_PROT : String = "arrows:"
+const ZSTD_PROT : String = "arrowszstd:"
+
 var menu : Menu
 var file_item : FileItem
 var return_func : Callable
@@ -121,6 +124,21 @@ func save_file():
 				return_func.call()
 		file.close()
 
+func load_data(data : PackedByteArray, source : String):
+	puzzledata = PuzzleData.deserialize(data)
+	if puzzledata == null:
+		ErrorScreen.show(menu, "%s is invalid or corrupt." % source, display_menu)
+	else:
+		if puzzledata.check_data():
+			# succeeded, about to return to original menu so put
+			# it back to what it was
+			menu.scrollable = was_scrollable
+			load_func.call(puzzledata)
+		else:
+			ErrorScreen.show(menu, "%s is invalid or corrupt." % source, display_menu)
+			puzzledata.free()
+			puzzledata = null
+
 func load_file():
 	if editing:
 		submit_name(menu.menu_items[0].line_edit.text)
@@ -134,25 +152,31 @@ func load_file():
 		else:
 			ErrorScreen.show(menu, "File %s couldn't be opened: %s" % [file_name, error_string(error)], display_menu)
 	else:
-		puzzledata = PuzzleData.deserialize(data)
-		if puzzledata == null:
-			ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, display_menu)
-		else:
-			if puzzledata.check_data():
-				# succeeded, about to return to original menu so put
-				# it back to what it was
-				menu.scrollable = was_scrollable
-				load_func.call(puzzledata)
-			else:
-				ErrorScreen.show(menu, "File %s is invalid or corrupt." % file_name, display_menu)
-				puzzledata.free()
-				puzzledata = null
+		load_data(data, "file %s" % file_name)
 
 func import_file():
-	pass
+	if not DisplayServer.clipboard_has():
+		ErrorScreen.show(menu, "Clipboard is empty.", display_menu)
+
+	var text : String = DisplayServer.clipboard_get().strip_edges()
+	if text.begins_with(RAW_PROT):
+		var data : PackedByteArray = Marshalls.base64_to_raw(text.substr(len(RAW_PROT)))
+		load_data(data, "Clipboard data")
+	elif text.begins_with(ZSTD_PROT):
+		var data : PackedByteArray = Marshalls.base64_to_raw(text.substr(len(RAW_PROT))) \
+										.decompress(len(text) - len(RAW_PROT),
+													FileAccess.COMPRESSION_ZSTD)
+		load_data(data, "Clipboard data")
 
 func export_file():
-	pass
+	var data : PackedByteArray = puzzledata.serialize()
+	var uncompressed : String = Marshalls.raw_to_base64(data)
+	var compressed : String = Marshalls.raw_to_base64(data.compress(FileAccess.COMPRESSION_ZSTD))
+
+	if len(compressed) + len(ZSTD_PROT) > len(uncompressed) + len(RAW_PROT):
+		DisplayServer.clipboard_set(RAW_PROT + uncompressed)
+	else:
+		DisplayServer.clipboard_set(ZSTD_PROT + compressed)
 
 func set_editing(toggled_on : bool):
 	if toggled_on:
