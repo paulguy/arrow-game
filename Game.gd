@@ -12,12 +12,17 @@ var puzzle : Puzzle = null
 var puzzle_size : Vector2i = Puzzle.DEFAULT_PUZZLE_SIZE
 var gen_params : RandGenParams = RandGenParams.new()
 var file_name : String = "Untitled"
+var browser : FileBrowser = null
 
 func make_menu():
 	menu = load("res://Menu.tscn").instantiate()
 	add_child(menu)
 
 func make_puzzle(editor_mode : bool = false):
+	# clean up
+	title_logo.queue_free()
+	menu.destroy()
+
 	puzzle = load("res://Puzzle.tscn").instantiate()
 	puzzle.game = self
 	puzzle.play_mode = not editor_mode
@@ -42,6 +47,23 @@ func _ready():
 	update_sizes()
 
 func _process(_delta : float):
+	# HACK: clean up the browser when it's done.
+	# this can't really be done elsewhere because when the
+	# browser loads, it calls back in to this object but can't
+	# be freed yet because the browser still exists in the call
+	# stack, and this is the only time when this object really
+	# executes anything when the puzzle scene is open
+	if browser != null and browser.done:
+		browser.free()
+		browser = null
+
+	# after the puzzle and menu have self-destroyed, this
+	# signals to quit
+	if (menu == null or not menu in get_children()) and \
+	   (puzzle == null or not puzzle in get_children()):
+		print_orphan_nodes()
+		get_tree().quit()
+
 	var new_size : Vector2i = get_viewport_rect().size
 	if new_size != last_size:
 		last_size = new_size
@@ -52,11 +74,14 @@ func update_menu(title, items : Array[MenuItemDesc]):
 	menu.set_items(items)
 	menu.update_size()
 
+func do_main_menu():
+	update_menu(title_logo, menu_main)
+
 func main_menu():
 	# logo control needs to be recreated each time for reasons
 	title_logo = TextureRect.new()
 	title_logo.texture = load("res://title.png")
-	update_menu(title_logo, menu_main)
+	do_main_menu()
 
 var menu_main : Array[MenuItemDesc] = [
 	MenuSelectionDesc.new(new_game_menu, "New Game"),
@@ -65,13 +90,11 @@ var menu_main : Array[MenuItemDesc] = [
 ]
 
 func editor():
-	menu.destroy()
-	title_logo.queue_free()
 	puzzle_size = Puzzle.DEFAULT_PUZZLE_SIZE
 	make_puzzle(true)
 
 func quit_game():
-	get_tree().quit()
+	menu.destroy()
 
 func puzzle_finished():
 	puzzle.queue_free()
@@ -84,16 +107,16 @@ func new_game_menu():
 
 var menu_new_game : Array[MenuItemDesc] = [
 	MenuDoubleSelectionDesc.new(load_puzzle, random_menu, "Load", "Random"),
-	MenuSelectionDesc.new(main_menu, "Main Menu")
+	MenuSelectionDesc.new(do_main_menu, "Main Menu")
 ]
 
 func load_puzzle():
-	var browser : FileBrowser = FileBrowser.new(menu,
-												file_name,
-												select_return,
-												set_file_name,
-												null,
-												load_file)
+	browser = FileBrowser.new(menu,
+							  file_name,
+							  select_return,
+							  set_file_name,
+							  null,
+							  load_file)
 	browser.display_menu()
 
 func set_file_name(fn : String):

@@ -19,3 +19,7 @@ func _ready():
 func menu_select(e : InputEvent):
 	if Menu.e_is_activate(e):
 		desc.activate_func.call(desc.key)
+
+func _notification(what : int):
+	if what == NOTIFICATION_PREDELETE:
+		texrect.queue_free()

@@ -1,5 +1,5 @@
-extends Object
 class_name Snake
+extends Object
 
 var pos : Vector2i
 var nextTowards : Array[Side]

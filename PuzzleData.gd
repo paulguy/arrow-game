@@ -24,7 +24,7 @@ static func get_data(size : Vector2i,
 					 occupied_by : PackedInt32Array) -> PuzzleData:
 	var newsnakes : Array[Snake] = []
 	for snake in snakes:
-		if snake != ArrowMap.DEAD_SNAKE:
+		if snake != null:
 			# deep copy the whole array
 			newsnakes.append(snake.copy())
 
@@ -263,3 +263,7 @@ func check_data() -> bool:
 				return false
 
 	return true
+
+func free_snakes():
+	for snake in snakes:
+		snake.free()

@@ -4,7 +4,6 @@ extends Object
 const UNOCCUPIED_ID : int = -1
 const FLY_ID : int = -2
 
-static var DEAD_SNAKE : Snake = Snake.new(Vector2i.MIN, -1, SIDE_TOP)
 var size : Vector2i
 var snakes : Array[Snake] = []
 var occupied_by : PackedInt32Array
@@ -341,7 +340,7 @@ func apply_snake_many(index : int, tile_maps : Array[TileMapLayer]):
 func delete_snake_map(index : int):
 	do_apply_snake(index, delete_map)
 	snakes[index].free()
-	snakes[index] = DEAD_SNAKE
+	snakes[index] = null
 
 func delete_snake_tilemap(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, delete_tilemap, tile_map)
@@ -349,12 +348,12 @@ func delete_snake_tilemap(index : int, tile_map : TileMapLayer):
 func delete_snake_both(index : int, tile_map : TileMapLayer):
 	do_apply_snake(index, delete_both, tile_map)
 	snakes[index].free()
-	snakes[index] = DEAD_SNAKE
+	snakes[index] = null
 
 func delete_snake_many(index : int, tile_maps : Array[TileMapLayer]):
 	do_apply_snake(index, delete_many, tile_maps)
 	snakes[index].free()
-	snakes[index] = DEAD_SNAKE
+	snakes[index] = null
 
 func delete_snake_many_checked(index : int, tile_maps : Array[TileMapLayer]):
 	# this is only used for split snakes, it'll be deleted later
@@ -539,7 +538,7 @@ func trim_snake_to_fit(index : int, tile_maps : Array[TileMapLayer] = []) -> boo
 
 	if fully_out:
 		snakes[index].free()
-		snakes[index] = DEAD_SNAKE
+		snakes[index] = null
 
 	if trimmed:
 		snake.free()
@@ -549,6 +548,15 @@ func trim_snake_to_fit(index : int, tile_maps : Array[TileMapLayer] = []) -> boo
 func add_snake(snake : Snake) -> int:
 	snakes.append(snake)
 	return len(snakes) - 1
+
+func clear_snakes():
+	for snake in snakes:
+		if snake != null:
+			snake.free()
+	snakes = []
+
+func cleanup():
+	clear_snakes()
 
 func rand_snake(pos : Vector2i,
 				length : int,
@@ -631,7 +639,7 @@ func generate_random(gen_params : RandGenParams,
 			chance *= gen_params.chance_mult
 
 	for i in len(snakes):
-		if snakes[i] == DEAD_SNAKE:
+		if snakes[i] == null:
 			continue
 		# delete overly short snakes
 		if len(snakes[i].nextTowards) < gen_params.min_length - 1:
@@ -651,7 +659,7 @@ func generate_random(gen_params : RandGenParams,
 		apply_flies(tile_map)
 
 	for index in len(snakes):
-		if snakes[index] != DEAD_SNAKE:
+		if snakes[index] != null:
 			apply_snake_many(index, tile_maps)
 
 	return active_snakes
@@ -661,10 +669,7 @@ func clear(size : Vector2i):
 	occupied_by = PackedInt32Array()
 	occupied_by.resize(size.x * size.y)
 	occupied_by.fill(UNOCCUPIED_ID)
-	for snake in snakes:
-		if snake != null and snake != DEAD_SNAKE:
-			snake.free()
-	snakes = []
+	clear_snakes()
 
 func _init(size : Vector2i):
 	clear(size)
@@ -697,7 +702,7 @@ func resize_puzzle(new_bounds : Rect2i, tile_maps : Array[TileMapLayer]):
 
 	# trim snakes to new size
 	for i in len(snakes):
-		if snakes[i] == DEAD_SNAKE:
+		if snakes[i] == null:
 			continue
 		# reorigin the snakes
 		snakes[i].pos -= new_bounds.position

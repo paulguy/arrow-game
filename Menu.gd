@@ -23,7 +23,7 @@ var last_rects : Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
 var last_font_change : float = 0.0
 
 var menu_descs : Dictionary[MenuItem, MenuItemDesc] = {}
-var menu_items : Array[MenuItem]
+var menu_items : Array[MenuItem] = []
 var last_change : MenuValue = null
 var last_change_time : float = 0.0
 var last_value_change_time : float = 0.0
@@ -146,11 +146,15 @@ func set_heading(c):
 		filler = null
 	update_heading_scale()
 
+func clear_items():
+	for item in menu_items:
+		if item != null:
+			#container.remove_child(item)
+			item.queue_free()
+
 func set_items(items : Array[MenuItemDesc]):
 	# clear any existing items
-	for item in menu_descs.keys():
-		container.remove_child(item)
-		item.queue_free()
+	clear_items()
 	menu_descs = {}
 	menu_items = []
 
@@ -220,4 +224,6 @@ func update_size(new_size : Vector2i = Vector2i.ZERO):
 
 func destroy():
 	header_label_settings.font_size = default_label_size
+	title_control.queue_free()
+	clear_items()
 	queue_free()

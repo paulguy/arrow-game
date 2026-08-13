@@ -69,6 +69,7 @@ enum Action {
 	MAX
 }
 
+@onready var arrow_view : ArrowView = $"ArrowView"
 @onready var border : TileMapLayer = $"Border"
 @onready var field_bg : Polygon2D = $"Border/Field Background"
 @onready var blur_viewport : Polygon2D = $"Arrow Viewport Blur"
@@ -80,7 +81,6 @@ enum Action {
 @onready var shade : Polygon2D = $"Shade"
 
 var game : Game
-var arrow_view : ArrowView = null
 var tile_size : Vector2i
 var map_size : Vector2i
 var view_pos : Vector2 = Vector2.ZERO
@@ -128,10 +128,9 @@ var grow : bool = false:
 		grow = val
 var action : Action = Action.SELECT
 var file_name : String = "Untitled"
+var browser : FileBrowser = null
 
 func _ready():
-	arrow_view = $"ArrowView"
-
 	$"Overlay/Menu/Menu/Margins/Text".text = "Menu"
 	if not play_mode:
 		# in edit mode, make edit items visible
@@ -158,6 +157,14 @@ func _ready():
 	flies_viewport.texture = arrow_view.get_flies_viewport_texture()
 
 	arrow_view.connect(&"puzzle_finished", puzzle_clear)
+
+func _process(_delta : float):
+	# HACK: free browser when it's done.
+	# This is the only way a function is guaranteed to run after
+	# returning from the file browser, since free can't be called
+	# in any of the browser callbacks.
+	if browser != null and browser.done:
+		browser.free()
 
 func _physics_process(_delta : float):
 	if not editor:
@@ -413,6 +420,7 @@ func return_to_game():
 
 func return_to_menu():
 	menu.destroy()
+	arrow_view.cleanup()
 	puzzle_finished.emit()
 
 func puzzle_clear():
@@ -446,13 +454,13 @@ var menu_editor : Array[MenuItemDesc] = [
 ]
 
 func file_menu():
-	var browser : FileBrowser = FileBrowser.new(menu,
-												file_name,
-												select_return,
-												set_file_name,
-												save_file,
-												load_file,
-												arrow_view.get_data())
+	browser = FileBrowser.new(menu,
+							  file_name,
+							  select_return,
+							  set_file_name,
+							  save_file,
+							  load_file,
+							  arrow_view.get_data())
 	browser.display_menu()
 
 func set_file_name(fn : String):

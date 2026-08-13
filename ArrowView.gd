@@ -214,6 +214,9 @@ func clear():
 	active_snake = null
 	active_snakes = len(arrow_map.snakes)
 
+func cleanup():
+	arrow_map.cleanup()
+
 func get_side(pos : Vector2i) -> Side:
 	if pos.x > arrow_map.size.y - 1 - pos.y:
 		if pos.x > pos.y:

@@ -1,5 +1,5 @@
 class_name FileBrowser
-extends Node
+extends Object
 
 const RAW_PROT : String = "arrows:"
 const ZSTD_PROT : String = "arrowszstd:"
@@ -11,12 +11,12 @@ var name_func : Callable
 var save_func : Callable
 var load_func : Callable
 var puzzledata : PuzzleData
-var was_scrollable : bool
 
 var menu_select : Array[MenuItemDesc]
 var show_load : bool = false
 var show_save : bool = false
 var editing : bool = false
+var done : bool = false
 
 func replace_placeholder_selection(left_label : String,
 								   left_func : Callable,
@@ -26,6 +26,7 @@ func replace_placeholder_selection(left_label : String,
 		var item : MenuItemDesc = menu_file[i]
 		if item is MenuPlaceholderDesc and \
 		   item.label == left_label:
+			menu_file[i].free()
 			menu_file[i] = MenuDoubleSelectionDesc.new(left_func, right_func, left_label, right_label)
 			break
 
@@ -34,6 +35,7 @@ func replace_selection_placeholder(left_label : String):
 		var item : MenuItemDesc = menu_file[i]
 		if item is MenuSelectionDesc and \
 		   item.label == left_label:
+			menu_file[i].free()
 			menu_file[i] = MenuPlaceholderDesc.new(left_label)
 			break
 
@@ -61,8 +63,6 @@ func _init(menu : Menu,
 	if load_func != null:
 		self.load_func = load_func
 		show_load = true
-
-	was_scrollable = menu.scrollable
 
 func update_menu(title : String,
 				 items : Array[MenuItemDesc]):
@@ -94,7 +94,8 @@ var menu_file : Array[MenuItemDesc] = [
 ]
 
 func do_return():
-	menu.scrollable = was_scrollable
+	file_item.free()
+	done = true
 	return_func.call()
 
 func submit_name(fn : String):
@@ -117,7 +118,6 @@ func save_file():
 		else:
 			# succeeded, about to return to original menu so put
 			# it back to what it was
-			menu.scrollable = was_scrollable
 			if save_func != null:
 				save_func.call()
 			else:
@@ -132,10 +132,11 @@ func load_data(data : PackedByteArray, source : String):
 		if puzzledata.check_data():
 			# succeeded, about to return to original menu so put
 			# it back to what it was
-			menu.scrollable = was_scrollable
 			load_func.call(puzzledata)
 		else:
 			ErrorScreen.show(menu, "%s is invalid or corrupt." % source, display_menu)
+			# discarding, free snake memory
+			puzzledata.free_snakes()
 			puzzledata.free()
 			puzzledata = null
 
@@ -193,9 +194,12 @@ func add_files_dir(dir_name : String):
 			var item : FileItem = FileItem.make_from_path("%s%s" % [dir_name, fn])
 			var puzzledata : PuzzleData = PuzzleData.deserialize(FileAccess.get_file_as_bytes(item.get_path()))
 			var image : Image = puzzledata.get_preview()
+			puzzledata.free_snakes()
+			puzzledata.free()
 			var desc : MenuImageSelectionDesc = MenuImageSelectionDesc.new(image, item, select_file_item, item.get_display_string())
 			menu_select.append(desc)
 		fn = dir.get_next()
+	dir.list_dir_end()
 
 func select_file():
 	menu_select = []
@@ -205,11 +209,11 @@ func select_file():
 	for item in menu_select_template:
 		menu_select.append(item)
 
-	update_menu("Browse", menu_select)
 	menu.scrollable = true
+	update_menu("Browse", menu_select)
 
 var menu_select_template : Array[MenuItemDesc] = [
-	MenuSelectionDesc.new(do_return, "Cancel")
+	MenuSelectionDesc.new(return_to_menu, "Cancel")
 ]
 
 func free_menu_select():
@@ -219,7 +223,14 @@ func free_menu_select():
 			item.free()
 	menu_select = []
 
+func return_to_menu():
+	menu.scrollable = false
+	# clean up before returning
+	free_menu_select()
+	display_menu()
+
 func select_file_item(key : FileItem):
 	file_item.free()
-	file_item = key
-	display_menu()
+	# copy the soon to be freed object
+	file_item = FileItem.new(key.file_name, key.file_source)
+	return_to_menu()
