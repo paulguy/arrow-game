@@ -1,8 +1,31 @@
 class_name FileBrowser
 extends Object
 
-const RAW_PROT : String = "arrows:"
-const ZSTD_PROT : String = "arrowszstd:"
+const COMPRESSION_PROTS : Dictionary[int, String] = {
+	-1 : "arrows:",
+	FileAccess.COMPRESSION_FASTLZ : "arrowsflz:",
+	FileAccess.COMPRESSION_DEFLATE : "arrowsZ:",
+	FileAccess.COMPRESSION_ZSTD : "arrowszst:",
+	FileAccess.COMPRESSION_GZIP : "arrowsgz:"
+}
+
+const COMPRESSION_MODES : Dictionary[String, int] = {
+	"arrows:" : -1,
+	"arrowsflz:" : FileAccess.COMPRESSION_FASTLZ,
+	"arrowsZ:" : FileAccess.COMPRESSION_DEFLATE,
+	"arrowszst:" : FileAccess.COMPRESSION_ZSTD,
+	"arrowsgz:" : FileAccess.COMPRESSION_GZIP
+}
+
+# a 4 byte int expands to 6 base64 characters
+# technically 8 but 2 are always ==
+const SIZE_TAG_SIZE : Dictionary[int, int] = {
+	-1 : 0,
+	FileAccess.COMPRESSION_FASTLZ : 6,
+	FileAccess.COMPRESSION_DEFLATE : 0,
+	FileAccess.COMPRESSION_ZSTD : 6,
+	FileAccess.COMPRESSION_GZIP : 0
+}
 
 var menu : Menu
 var file_item : FileItem
@@ -156,28 +179,66 @@ func load_file():
 		load_data(data, "file %s" % file_name)
 
 func import_file():
+	var data : PackedByteArray
+
 	if not DisplayServer.clipboard_has():
 		ErrorScreen.show(menu, "Clipboard is empty.", display_menu)
+		return
 
 	var text : String = DisplayServer.clipboard_get().strip_edges()
-	if text.begins_with(RAW_PROT):
-		var data : PackedByteArray = Marshalls.base64_to_raw(text.substr(len(RAW_PROT)))
-		load_data(data, "Clipboard data")
-	elif text.begins_with(ZSTD_PROT):
-		var data : PackedByteArray = Marshalls.base64_to_raw(text.substr(len(RAW_PROT))) \
-										.decompress(len(text) - len(RAW_PROT),
-													FileAccess.COMPRESSION_ZSTD)
-		load_data(data, "Clipboard data")
+	var colon : int = text.find(":")
+	if colon < 0:
+		ErrorScreen.show(menu, "Clipboard doesn't contain a recognizable share string.", display_menu)
+		return
+	var prot_str : String = text.substr(0, colon + 1)
+	if not prot_str in COMPRESSION_MODES:
+		ErrorScreen.show(menu, "Clipboard doesn't contain a recognizable share string.", display_menu)
+		return
+
+	var prot : int = COMPRESSION_MODES[prot_str]
+	if prot < 0:
+		data = Marshalls.base64_to_raw(text.substr(len(prot_str)))
+	else:
+		if SIZE_TAG_SIZE[prot] > 0:
+			# only 6 chars are needed but it really wants that "=="
+			var size_tag_data : PackedByteArray = Marshalls.base64_to_raw(text.substr(len(prot_str), SIZE_TAG_SIZE[prot]) + "==")
+			var size : int = size_tag_data.decode_u32(0)
+			data = Marshalls.base64_to_raw(text.substr(len(prot_str) + SIZE_TAG_SIZE[prot])) \
+							.decompress(size, prot)
+		else:
+			# a 1MB puzzle would be ridiculous but it also shouldn't
+			# cause any real harm if such a large puzzle was ingested
+			data = Marshalls.base64_to_raw(text.substr(len(prot_str))) \
+							.decompress_dynamic(1024 * 1024, prot)
+
+	load_data(data, "Clipboard data")
 
 func export_file():
 	var data : PackedByteArray = puzzledata.serialize()
-	var uncompressed : String = Marshalls.raw_to_base64(data)
-	var compressed : String = Marshalls.raw_to_base64(data.compress(FileAccess.COMPRESSION_ZSTD))
+	var share_string : String
+	var total_len : int
+	var shortest : int = INT32_MAX
+	var considering : String
+	var shortest_mode : int
+	var size_tag_data : PackedByteArray = PackedByteArray()
+	size_tag_data.resize(4)
+	size_tag_data.encode_u32(0, len(data))
+	var size_tag : String = Marshalls.raw_to_base64(size_tag_data).substr(0, 6)
 
-	if len(compressed) + len(ZSTD_PROT) > len(uncompressed) + len(RAW_PROT):
-		DisplayServer.clipboard_set(RAW_PROT + uncompressed)
-	else:
-		DisplayServer.clipboard_set(ZSTD_PROT + compressed)
+	for mode in COMPRESSION_PROTS.keys():
+		if mode == -1:
+			considering = Marshalls.raw_to_base64(data)
+		else:
+			considering = Marshalls.raw_to_base64(data.compress(mode))
+		total_len = len(COMPRESSION_PROTS[mode]) + SIZE_TAG_SIZE[mode] + len(considering)
+		if total_len < shortest:
+			share_string = considering
+			shortest = total_len
+			shortest_mode = mode
+
+	DisplayServer.clipboard_set(COMPRESSION_PROTS[shortest_mode] +
+								size_tag.substr(0, SIZE_TAG_SIZE[shortest_mode]) +
+								share_string)
 
 func set_editing(toggled_on : bool):
 	if toggled_on:
