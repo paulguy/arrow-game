@@ -164,10 +164,11 @@ func reverse_selected_snake():
 	set_snake_column(arrow_map.snakes[last_snake], SnakeColumn.HIGHLIGHT)
 
 func split_selected_snake(pos : Vector2i):
-	var snake : Snake = arrow_map.snakes[last_snake]
+	var snake : Snake = arrow_map.snakes[last_snake].copy()
 	var split_idx : int = snake.which_pos(pos)
 	if split_idx >= 0:
 		arrow_map.delete_snake_many(last_snake, tile_maps)
+		last_snake = -1
 		var first : Snake
 		var second : Snake
 		if split_idx == 0:
@@ -180,6 +181,7 @@ func split_selected_snake(pos : Vector2i):
 		arrow_map.apply_snake_many(newsnake_idx, tile_maps)
 		arrow_map.apply_snake_many(arrow_map.add_snake(second), tile_maps)
 		select_snake(newsnake_idx)
+	snake.free()
 
 func join_selected_snake(snake_idx : int):
 	var snake1 : Snake = arrow_map.snakes[last_snake]
