@@ -460,7 +460,7 @@ func do_reverse_snake(index : int,
 		if len(snake.nextTowards) == 1:
 			action.call(pos, NEXT_CELL[Vector2i(Snake.OPPOSITE_SIDE[snake.headTowards], snake.nextTowards[-1])], index, action_arg)
 		else:
-			action.call(pos, NEXT_CELL[Vector2i(snake.nextTowards[-2], snake.nextTowards[-1])], index, action_arg)
+			action.call(pos, NEXT_CELL[Vector2i(snake.nextTowards[-1], snake.nextTowards[-1])], index, action_arg)
 
 func reverse_snake_both(index : int,
 						tile_map : TileMapLayer):
