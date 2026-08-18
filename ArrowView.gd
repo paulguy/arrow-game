@@ -192,6 +192,7 @@ func split_selected_snake(pos : Vector2i) -> bool:
 		arrow_map.apply_snake_many(arrow_map.add_snake(second), tile_maps)
 		select_snake(newsnake_idx)
 	snake.free()
+	active_snakes += 1
 	return true
 
 func join_selected_snake(snake_idx : int):
@@ -205,6 +206,7 @@ func join_selected_snake(snake_idx : int):
 		arrow_map.apply_snake_many(newsnake_idx, tile_maps)
 		last_snake = -1
 		select_snake(newsnake_idx)
+		active_snakes -= 1
 
 func resize_puzzle(new_bounds : Rect2i):
 	arrow_map.resize_puzzle(new_bounds, tile_maps)
