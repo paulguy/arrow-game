@@ -287,28 +287,26 @@ func ui_event(e : InputEvent, c : Control):
 
 	if Menu.e_is_activate(e):
 		var snake_idx : int
-		snake_idx = arrow_view.pick_snake(get_view_rel_pos(e.position + c.position))
+		var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position))
+		snake_idx = arrow_view.pick_snake(pos)
 		if editor:
 			if action == Action.ADD:
 				if snake_idx < 0:
 					# only add a snake if no snake was there
-					var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position)) / tile_size
-					# point it towards the outside
-					var towards : Side = arrow_view.get_side(pos)
-					arrow_view.add_snake(pos, 1, towards)
+					arrow_view.add_snake_at(pos, 1)
 				else:
 					# select clicked snakes in add mode anyway
 					arrow_view.select_snake(snake_idx)
 			elif action == Action.SPLIT:
 				if snake_idx >= 0:
-					var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position)) / tile_size
-					arrow_view.split_selected_snake(pos)
+					if not arrow_view.split_selected_snake(pos):
+						# if not the selected snake, select it on the first click
+						arrow_view.select_snake(snake_idx)
 			elif action == Action.JOIN:
 				if snake_idx >= 0:
 					arrow_view.join_selected_snake(snake_idx)
 			elif action == Action.FLIES:
 				if snake_idx < 0:
-					var pos : Vector2i = Vector2i(get_view_rel_pos(e.position + c.position)) / tile_size
 					arrow_view.place_fly(pos)
 			else:
 				# Default action: select

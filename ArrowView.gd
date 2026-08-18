@@ -71,7 +71,7 @@ func set_snake_column(snake : Snake, column : int):
 		coll_tile_map.set_cell(pos, 0, Vector2i(column, y))
 
 func pick_snake(pos : Vector2) -> int:
-	return arrow_map.select_snake(pos / Vector2(tile_size))
+	return arrow_map.select_snake(Vector2i(pos) / tile_size)
 
 func select_snake(snake_idx : int):
 	if last_snake >= 0:
@@ -102,6 +102,10 @@ func add_snake(pos : Vector2i,
 		arrow_map.apply_snake_both(index, tile_map)
 		select_snake(index)
 		active_snakes += 1
+
+func add_snake_at(pos : Vector2i,
+				  length : int):
+	add_snake(pos / tile_size, length, get_side(pos / tile_size))
 
 func delete_selected_snake():
 	if last_snake < 0:
@@ -163,9 +167,15 @@ func reverse_selected_snake():
 	arrow_map.reverse_snake_both(last_snake, tile_map)
 	set_snake_column(arrow_map.snakes[last_snake], SnakeColumn.HIGHLIGHT)
 
-func split_selected_snake(pos : Vector2i):
+func split_selected_snake(pos : Vector2i) -> bool:
+	# pick snake is an external function so it takes a pixel position
+	var snake_idx : int = pick_snake(pos)
+	if snake_idx == -1 or snake_idx != last_snake:
+		# for safety, only operate on selected snake
+		return false
 	var snake : Snake = arrow_map.snakes[last_snake].copy()
-	var split_idx : int = snake.which_pos(pos)
+	# snake.which_pos is an internal function so it wants a grid coordinate
+	var split_idx : int = snake.which_pos(pos / tile_size)
 	if split_idx >= 0:
 		arrow_map.delete_snake_many(last_snake, tile_maps)
 		last_snake = -1
@@ -182,6 +192,7 @@ func split_selected_snake(pos : Vector2i):
 		arrow_map.apply_snake_many(arrow_map.add_snake(second), tile_maps)
 		select_snake(newsnake_idx)
 	snake.free()
+	return true
 
 func join_selected_snake(snake_idx : int):
 	var snake1 : Snake = arrow_map.snakes[last_snake]
@@ -192,13 +203,14 @@ func join_selected_snake(snake_idx : int):
 		arrow_map.delete_snake_many(snake_idx, tile_maps)
 		var newsnake_idx : int = arrow_map.add_snake(newsnake)
 		arrow_map.apply_snake_many(newsnake_idx, tile_maps)
+		last_snake = -1
 		select_snake(newsnake_idx)
 
 func resize_puzzle(new_bounds : Rect2i):
 	arrow_map.resize_puzzle(new_bounds, tile_maps)
 
 func place_fly(pos : Vector2i):
-	arrow_map.place_fly(pos, tile_maps)
+	arrow_map.place_fly(pos / tile_size, tile_maps)
 
 func get_data() -> PuzzleData:
 	return arrow_map.get_data()
