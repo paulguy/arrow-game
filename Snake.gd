@@ -142,7 +142,6 @@ func join(other : Snake):
 	# give this snake the head
 	join_dir = adjacent(pos, other.pos)
 	if join_dir >= 0:
-		print("head to head")
 		# other snake's head is near this snake's head
 		# the new head will be at this snake's tail
 		if len(nextTowards) == 0:
@@ -164,7 +163,6 @@ func join(other : Snake):
 		return newsnake
 	join_dir = adjacent(thistail, other.pos)
 	if join_dir >= 0:
-		print("tail to head")
 		# this snake in front of the other snake
 		# head stays the same
 		newsnake = Snake.new(pos, 2 + len(nextTowards) + len(other.nextTowards), headTowards)
@@ -179,7 +177,6 @@ func join(other : Snake):
 		return newsnake
 	join_dir = adjacent(pos, othertail)
 	if join_dir >= 0:
-		print("head to tail")
 		# this snake sniffing the other tail
 		# the new head will be at this snake's tail
 		if len(nextTowards) == 0:
@@ -201,7 +198,6 @@ func join(other : Snake):
 		return newsnake
 	join_dir = adjacent(thistail, othertail)
 	if join_dir >= 0:
-		print("tail to tail")
 		# tail to tail
 		# head stays the same
 		newsnake = Snake.new(pos, 2 + len(nextTowards) + len(other.nextTowards), headTowards)
