@@ -127,9 +127,9 @@ func serialize() -> PackedByteArray:
 		data.append(snake.pos.y)
 		data.append(0)
 		data.append(0)
-		data.append(0)
-		data.append(0)
-		data.encode_u32(len(data) - 4, len(snake.nextTowards))
+#		data.append(0)
+#		data.append(0)
+		data.encode_u16(len(data) - 2, len(snake.nextTowards))
 		append_snakedata(snakedata, 0, snake.headTowards)
 		for i in len(snake.nextTowards):
 			append_snakedata(snakedata, i + 1, snake.nextTowards[i])
@@ -156,7 +156,7 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 	var headTowards : Side
 	var nextTowards : Array[Side]
 	while true:
-		if len(data) - datapos < 6:
+		if len(data) - datapos < 4:
 			return null
 		# get position
 		snakepos.x = data[datapos]
@@ -166,9 +166,12 @@ static func deserialize(data : PackedByteArray) -> PuzzleData:
 			break
 		snakepos.y = data[datapos + 1]
 		# get length
-		snakelen = data.decode_u32(datapos + 2)
+		snakelen = data.decode_u16(datapos + 2)
 		# advance snake header
-		datapos += 6
+		datapos += 4
+		# check if there's enough data
+		if len(data) - datapos < get_snakedata_len(snakelen + 1):
+			return null
 		# get snake head
 		headTowards = get_snakedata(data, datapos * 4)
 		# get snake tail pieces
