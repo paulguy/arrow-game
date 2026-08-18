@@ -294,4 +294,5 @@ func select_file_item(key : FileItem):
 	file_item.free()
 	# copy the soon to be freed object
 	file_item = FileItem.new(key.file_name, key.file_source)
+	name_func.call(file_item.get_path())
 	return_to_menu()
