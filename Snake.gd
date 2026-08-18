@@ -1,6 +1,8 @@
 class_name Snake
 extends Object
 
+const MAX_LENGTH : int = UINT16_MAX
+
 var pos : Vector2i
 var nextTowards : Array[Side]
 var headTowards : Side
@@ -23,6 +25,10 @@ func _init(pos : Vector2i, length : int, towards : Side):
 	self.pos = pos
 	self.headTowards = towards
 	nextTowards = []
+	# clamp to file storage data size
+	# do + 1 because the length includes the head but the head
+	# isn't counted in the stored length field
+	length = min(length, MAX_LENGTH + 1)
 	if length > 1:
 		nextTowards.resize(length - 1)
 	# grow away from head
@@ -75,6 +81,8 @@ func move(towards : Side, resize : bool = false) -> Vector2i:
 	return lastPos
 
 func grow(towards : Side):
+	if len(nextTowards) == MAX_LENGTH:
+		return
 	nextTowards.append(towards)
 
 func trim(length : int):
@@ -135,6 +143,11 @@ func adjacent(pos1 : Vector2i, pos2 : Vector2i) -> int:
 	return -1
 
 func join(other : Snake):
+	if len(nextTowards) + len(other.nextTowards) + 1 > MAX_LENGTH:
+		# if both snakes joined would be too long, don't do anything
+		# add + 1 for a head turning in to a tail piece
+		return null
+
 	var thistail : Vector2i = get_pos()
 	var othertail : Vector2i = other.get_pos()
 	var newsnake : Snake
